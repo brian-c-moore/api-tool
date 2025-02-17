@@ -1,0 +1,24 @@
+retry:
+  max_attempts: 3
+  backoff_seconds: 2
+  exclude_errors: [401, 403]
+
+auth:
+  default: "none"  # No authentication required for JSONPlaceholder
+
+logging:
+  level: "info"  # Options: info, debug, trace
+
+apis:
+  jsonplaceholder:
+    base_url: "https://jsonplaceholder.typicode.com"
+    auth_type: "none"
+    endpoints:
+      get_posts:
+        path: "/posts"
+        method: "GET"
+        pagination:
+          type: "page"  # Supports: page, offset, cursor
+          param: "_page"  # Parameter for page-based pagination
+          limit_param: "_limit"  # Defines the number of items per page
+          limit: 10  # Fetch 10 items per page
