@@ -1,16 +1,5 @@
-retry:
-  max_attempts: 3
-  backoff_seconds: 2
-  exclude_errors: [401, 403]
-
-auth:
-  default: "none"  # No authentication required for JSONPlaceholder
-
-logging:
-  level: "info"  # Options: info, debug, trace
-
 apis:
-  jsonplaceholder:
+  testapi:
     base_url: "https://jsonplaceholder.typicode.com"
     auth_type: "none"
     endpoints:
@@ -18,7 +7,33 @@ apis:
         path: "/posts"
         method: "GET"
         pagination:
-          type: "page"  # Supports: page, offset, cursor
-          param: "_page"  # Parameter for page-based pagination
-          limit_param: "_limit"  # Defines the number of items per page
-          limit: 10  # Fetch 10 items per page
+          type: "none"
+      get_post:
+        path: "/posts/{{.FIRST_ID}}"
+        method: "GET"
+        pagination:
+          type: "none"
+auth:
+  default: "none"
+  credentials: {}
+retry:
+  max_attempts: 3
+  backoff_seconds: 2
+  exclude_errors: [401, 403]
+logging:
+  level: "debug"
+chain:
+  variables: {}
+  steps:
+    - name: list_posts
+      request:
+        api: "testapi"
+        endpoint: "get_posts"
+        method: "GET"
+      extract:
+        FIRST_ID: ".[0].id"
+    - name: get_post
+      request:
+        api: "testapi"
+        endpoint: "get_post"
+        method: "GET"
