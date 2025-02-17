@@ -11,7 +11,7 @@
   2. Build the application:  
      `go build -o build/api-tool ./cmd/api-tool`
   3. Run test examples:  
-     `./build/api-tool -config=configs/config.yaml -api=jsonplaceholder -endpoint=get_posts`  
+     `./build/api-tool -config=configs/json_test.yaml -api=jsonplaceholder -endpoint=get_posts`  
      `./build/api-tool -config=configs/chain_test.yaml --chain`   
 
 ## Configuration:
