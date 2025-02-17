@@ -4,7 +4,7 @@
   API Tool is a universal REST API command-line application written in Go.
   It supports multiple authentication methods (none, api_key, bearer, basic, ntlm, digest, oauth2),
   built-in retry logic, pagination, and multi-step chain workflows for complex API sequences.
-  For full details, please refer to the man page (API-TOOL(1)).
+  For full details, please refer to the man page: [API-TOOL(1)](docs/api-tool.1.man).
 
 ## Installation:
   1. Clone the repository and navigate to the project directory.
@@ -73,7 +73,7 @@
   • OAuth2:
       Set auth_type to "oauth2" and provide client_id, client_secret, token_url, and scope.
 
-For full documentation on the YAML specification and all supported features, please refer to the man page [API-TOOL(1)](docs/api-tool.1.man).
+For full documentation on the YAML specification and all supported features, please refer to the man page: [API-TOOL(1)](docs/api-tool.1.man).
 
 ## License:
   API Tool is released under the MIT License. See the LICENSE file for details.
