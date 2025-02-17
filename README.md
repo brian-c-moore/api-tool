@@ -8,8 +8,11 @@
 
 ## Installation:
   1. Clone the repository and navigate to the project directory.
-  2. Build the application:
-       go build -o build/api-tool ./cmd/api-tool
+  2. Build the application:  
+     `go build -o build/api-tool ./cmd/api-tool`
+  3. Run test examples:  
+     `./build/api-tool -config=configs/config.yaml -api=jsonplaceholder -endpoint=get_posts`  
+     `./build/api-tool -config=configs/chain_test.yaml --chain`   
 
 ## Configuration:
   The tool is configured via a YAML file that defines:
