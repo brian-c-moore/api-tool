@@ -70,7 +70,7 @@
   • OAuth2:
       Set auth_type to "oauth2" and provide client_id, client_secret, token_url, and scope.
 
-For full documentation on the YAML specification and all supported features, please refer to the man page (API-TOOL(1)).
+For full documentation on the YAML specification and all supported features, please refer to the man page [API-TOOL(1)](docs/api-tool.1.man).
 
 ## License:
   API Tool is released under the MIT License. See the LICENSE file for details.
