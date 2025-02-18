@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls" // For TLS configuration.
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -11,9 +12,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -38,15 +41,17 @@ type Config struct {
 	Logging struct {
 		Level string `yaml:"level"` // Log verbosity.
 	} `yaml:"logging"`
-	APIs  map[string]APIConfig `yaml:"apis"`         // API endpoint definitions.
-	Chain *ChainConfig       `yaml:"chain,omitempty"` // Optional multi-step workflow.
+	APIs  map[string]APIConfig `yaml:"apis"`            // API endpoint definitions.
+	Chain *ChainConfig         `yaml:"chain,omitempty"` // Optional multi-step workflow.
 }
 
 // APIConfig defines a single API's configuration.
 type APIConfig struct {
-	BaseURL   string                    `yaml:"base_url"`
-	AuthType  string                    `yaml:"auth_type"`  // Optional API-specific auth type.
-	Endpoints map[string]EndpointConfig `yaml:"endpoints"`  // Defined endpoints.
+	BaseURL       string                    `yaml:"base_url"`
+	AuthType      string                    `yaml:"auth_type"`                 // Optional API-specific auth type.
+	TlsSkipVerify bool                      `yaml:"tls_skip_verify,omitempty"` // Set true to disable TLS verification.
+	CookieJar     bool                      `yaml:"cookie_jar,omitempty"`      // NEW: Set true to enable cookie jar management.
+	Endpoints     map[string]EndpointConfig `yaml:"endpoints"`                 // Defined endpoints.
 }
 
 // EndpointConfig defines an endpoint's details.
@@ -66,8 +71,8 @@ type PaginationConfig struct {
 
 // XMLResponse is used to parse XML responses.
 type XMLResponse struct {
-	XMLName xml.Name `xml:"response"`
-	Content string   `xml:",innerxml"`
+	XMLName xml.Name `yaml:"response"`
+	Content string   `yaml:",innerxml"`
 }
 
 // ChainConfig defines a multi-step workflow.
@@ -114,6 +119,17 @@ var (
 
 var logLevel int
 
+// logCookieJar logs the cookies stored in the client's cookie jar for a given URL.
+func logCookieJar(jar http.CookieJar, urlStr string) {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		logMessage("Error parsing URL for cookie jar: "+err.Error(), "debug")
+		return
+	}
+	cookies := jar.Cookies(u)
+	logMessage(fmt.Sprintf("Cookie jar for %s: %v", urlStr, cookies), "debug")
+}
+
 func init() {
 	flag.Usage = func() {
 		usageText := `Usage:
@@ -131,7 +147,7 @@ Options:
   -method string
         Override HTTP method
   -headers string
-        Additional headers (Key:Value,...) 
+        Additional headers (Key:Value,...)
   -data string
         JSON payload for POST/PUT requests
   -loglevel string
@@ -225,36 +241,57 @@ func main() {
 	}
 	setAuthHeaders(req, effectiveAuthType, config)
 	logMessage("Authorization header: "+req.Header.Get("Authorization"), "debug")
+
+	// Create HTTP client, respecting tls_skip_verify.
 	var client *http.Client
-	switch effectiveAuthType {
-	case "ntlm":
-		client = &http.Client{Transport: ntlmssp.Negotiator{RoundTripper: http.DefaultTransport}}
-	case "oauth2":
-		oauthConfig := clientcredentials.Config{
-			ClientID:     config.Auth.Credentials["client_id"],
-			ClientSecret: config.Auth.Credentials["client_secret"],
-			TokenURL:     config.Auth.Credentials["token_url"],
-			Scopes:       strings.Split(config.Auth.Credentials["scope"], " "),
+	if apiConf.TlsSkipVerify {
+		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		client = &http.Client{Transport: tr}
+		logMessage("TLS verification disabled for API '"+*apiName+"'", "info")
+	} else {
+		switch effectiveAuthType {
+		case "ntlm":
+			client = &http.Client{Transport: ntlmssp.Negotiator{RoundTripper: http.DefaultTransport}}
+		case "oauth2":
+			oauthConfig := clientcredentials.Config{
+				ClientID:     config.Auth.Credentials["client_id"],
+				ClientSecret: config.Auth.Credentials["client_secret"],
+				TokenURL:     config.Auth.Credentials["token_url"],
+				Scopes:       strings.Split(config.Auth.Credentials["scope"], " "),
+			}
+			client = oauthConfig.Client(context.Background())
+		default:
+			client = &http.Client{}
 		}
-		client = oauthConfig.Client(context.Background())
-	default:
-		client = &http.Client{}
 	}
+	// If cookie management is enabled for this API, set up a cookie jar.
+	if apiConf.CookieJar {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			log.Fatalf("Failed to create cookie jar: %v", err)
+		}
+		client.Jar = jar
+		logMessage("Cookie jar enabled for API '"+*apiName+"'", "info")
+	}
+
 	logMessage(fmt.Sprintf("Sending request: %s %s", req.Method, req.URL.String()), "debug")
 	logMessage(fmt.Sprintf("Headers: %v", req.Header), "debug")
 	if len(payload) > 0 {
 		logMessage(fmt.Sprintf("Payload: %s", payloadStr), "debug")
 	}
-	body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
+	// Capture all three return values.
+	resp, body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
 	if err != nil {
 		log.Fatalf("Final request failed: %v", err)
 	}
-	respSnippet := string(body)
-	if len(respSnippet) > 200 {
-		respSnippet = respSnippet[:200] + "..."
-	}
-	logMessage("Response body: "+respSnippet, "debug")
+	logMessage(fmt.Sprintf("Response status: %d", resp.StatusCode), "debug")
+	logMessage(fmt.Sprintf("Response headers: %v", resp.Header), "debug")
+	logMessage("Response body: "+snippet(body), "debug")
 	fmt.Println(string(body))
+	// Log cookie jar contents if enabled.
+	if client.Jar != nil {
+		logCookieJar(client.Jar, apiConf.BaseURL)
+	}
 	if strings.ToLower(endpointConf.Pagination.Type) == "cursor" {
 		handlePagination(client, req, endpointConf, body, config, effectiveAuthType)
 	}
@@ -323,7 +360,8 @@ func setAuthHeaders(req *http.Request, effectiveAuthType string, config Config) 
 }
 
 // executeRequestWithRetry sends the HTTP request with retry logic.
-func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAuthType string, config Config) ([]byte, error) {
+// Returns the final *http.Response, the response body, and an error if any.
+func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAuthType string, config Config) (*http.Response, []byte, error) {
 	attempts := 0
 	maxRetries := config.Retry.MaxAttempts
 	backoffTime := config.Retry.Backoff
@@ -331,7 +369,7 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 		if req.GetBody != nil && req.Body != nil {
 			newBody, err := req.GetBody()
 			if err != nil {
-				return nil, fmt.Errorf("failed to reset request body: %v", err)
+				return nil, nil, fmt.Errorf("failed to reset request body: %v", err)
 			}
 			req.Body = newBody
 		}
@@ -345,11 +383,11 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 			if req.GetBody != nil {
 				b, err := req.GetBody()
 				if err != nil {
-					return nil, fmt.Errorf("failed to get body for digest auth: %v", err)
+					return nil, nil, fmt.Errorf("failed to get body for digest auth: %v", err)
 				}
 				bodyBytes, err := ioutil.ReadAll(b)
 				if err != nil {
-					return nil, fmt.Errorf("failed to read body for digest auth: %v", err)
+					return nil, nil, fmt.Errorf("failed to read body for digest auth: %v", err)
 				}
 				bodyStr = string(bodyBytes)
 			}
@@ -364,8 +402,10 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 			body, readErr := ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
 			if readErr != nil {
-				return nil, fmt.Errorf("failed to read response body: %v", readErr)
+				return nil, nil, fmt.Errorf("failed to read response body: %v", readErr)
 			}
+			logMessage(fmt.Sprintf("Response status: %d", resp.StatusCode), "debug")
+			logMessage(fmt.Sprintf("Response headers: %v", resp.Header), "debug")
 			retryable := false
 			if resp.StatusCode >= 500 && resp.StatusCode < 600 {
 				retryable = true
@@ -385,14 +425,14 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 				} else {
 					logMessage(fmt.Sprintf("Response Content-Type: %s", ct), "debug")
 				}
-				return body, nil
+				return resp, body, nil
 			}
 			logMessage(fmt.Sprintf("Server returned status %d. Retrying...", resp.StatusCode), "info")
 			err = fmt.Errorf("server error: %d", resp.StatusCode)
 		}
 		attempts++
 		if attempts >= maxRetries {
-			return nil, fmt.Errorf("max retry attempts reached: %v", err)
+			return nil, nil, fmt.Errorf("max retry attempts reached: %v", err)
 		}
 		time.Sleep(time.Duration(backoffTime) * time.Second)
 	}
@@ -418,7 +458,7 @@ func handlePagination(client *http.Client, originalReq *http.Request, endpointCo
 			log.Fatalf("Failed to create pagination request: %v", err)
 		}
 		req.Header = originalReq.Header.Clone()
-		body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
+		_, body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
 		if err != nil {
 			log.Fatalf("Pagination request failed: %v", err)
 		}
@@ -432,12 +472,63 @@ func handlePagination(client *http.Client, originalReq *http.Request, endpointCo
 	}
 }
 
+// extractHeader extracts a header value using a regex from the response.
+// Expected format: "header:HeaderName:regex"
+func extractHeader(resp *http.Response, extractionExpr string) (string, error) {
+	parts := strings.SplitN(extractionExpr, ":", 3)
+	if len(parts) != 3 {
+		return "", fmt.Errorf("invalid header extraction expression: %s", extractionExpr)
+	}
+	headerName := parts[1]
+	regexPattern := parts[2]
+	headerValue := resp.Header.Get(headerName)
+	if headerValue == "" {
+		return "", fmt.Errorf("header %s not found", headerName)
+	}
+	re, err := regexp.Compile(regexPattern)
+	if err != nil {
+		return "", fmt.Errorf("invalid regex pattern: %v", err)
+	}
+	matches := re.FindStringSubmatch(headerValue)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("failed to extract header %s using pattern %s", headerName, regexPattern)
+	}
+	return matches[1], nil
+}
+
+// runJqFilter runs a jq expression on the given JSON data.
+func runJqFilter(input []byte, jqFilter string) (string, error) {
+	cmd := exec.Command("jq", "-r", jqFilter)
+	cmd.Stdin = bytes.NewReader(input)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("jq error: %v", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// snippet returns a shortened version of the response for debug logging.
+func snippet(b []byte) string {
+	s := string(b)
+	if len(s) > 300 {
+		return s[:300] + "..."
+	}
+	return s
+}
+
 // runChain executes the workflow defined in the chain section.
 func runChain(config Config) error {
 	state := make(map[string]string)
 	for k, v := range config.Chain.Variables {
 		state[k] = v
 	}
+
+	// Create a persistent cookie jar to be used for all chain steps that require it.
+	persistentJar, err := cookiejar.New(nil)
+	if err != nil {
+		return fmt.Errorf("failed to create persistent cookie jar: %v", err)
+	}
+
 	for _, step := range config.Chain.Steps {
 		logMessage("Executing step: "+step.Name, "info")
 		if step.Request != nil {
@@ -489,15 +580,48 @@ func runChain(config Config) error {
 			for key, val := range reqHeaders {
 				req.Header.Set(key, val)
 			}
-			client := &http.Client{}
+
+			// Determine effective auth type and apply authentication.
+			effectiveAuthType := strings.ToLower(apiConf.AuthType)
+			if effectiveAuthType == "" {
+				effectiveAuthType = strings.ToLower(config.Auth.Default)
+			}
+			setAuthHeaders(req, effectiveAuthType, config)
+
+			var client *http.Client
+			if apiConf.TlsSkipVerify {
+				tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+				client = &http.Client{Transport: tr}
+				logMessage("TLS verification disabled for API '"+step.Request.API+"'", "info")
+			} else {
+				client = &http.Client{}
+			}
+			// Use the persistent cookie jar if cookie management is enabled.
+			if apiConf.CookieJar {
+				client.Jar = persistentJar
+				logMessage("Cookie jar enabled for API '"+step.Request.API+"'", "info")
+			}
 			logMessage(fmt.Sprintf("Step '%s': sending request %s %s", step.Name, req.Method, req.URL.String()), "debug")
-			respBody, err := executeRequestWithRetry(client, req, "none", config)
+			resp, body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
 			if err != nil {
 				return fmt.Errorf("error in step '%s': %v", step.Name, err)
 			}
-			if step.Extract != nil {
-				for varName, jqExpr := range step.Extract {
-					extracted, err := runJqFilter(respBody, jqExpr)
+			logMessage(fmt.Sprintf("Step '%s': response body snippet: %s", step.Name, snippet(body)), "debug")
+			// If cookie jar is enabled, log its contents.
+			if client.Jar != nil {
+				logCookieJar(client.Jar, apiConf.BaseURL)
+			}
+			for varName, expr := range step.Extract {
+				trimExpr := strings.TrimSpace(expr)
+				if strings.HasPrefix(trimExpr, "header:") {
+					extracted, err := extractHeader(resp, trimExpr)
+					if err != nil {
+						return fmt.Errorf("error extracting '%s' in step '%s': %v", varName, step.Name, err)
+					}
+					state[varName] = extracted
+					logMessage(fmt.Sprintf("Step '%s': extracted %s = %s (from header)", step.Name, varName, extracted), "info")
+				} else {
+					extracted, err := runJqFilter(body, expr)
 					if err != nil {
 						return fmt.Errorf("error extracting '%s' in step '%s': %v", varName, step.Name, err)
 					}
@@ -529,15 +653,4 @@ func runChain(config Config) error {
 	}
 	logMessage("Final chain state: "+fmt.Sprintf("%v", state), "info")
 	return nil
-}
-
-// runJqFilter runs a jq expression on the given JSON data.
-func runJqFilter(input []byte, jqFilter string) (string, error) {
-	cmd := exec.Command("jq", "-r", jqFilter)
-	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("jq error: %v", err)
-	}
-	return strings.TrimSpace(string(out)), nil
 }
