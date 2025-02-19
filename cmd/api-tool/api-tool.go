@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/tls" // For TLS configuration.
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -35,23 +36,23 @@ type Config struct {
 		ExcludeErrors []int `yaml:"exclude_errors"`
 	} `yaml:"retry"`
 	Auth struct {
-		Default     string            `yaml:"default"`     // Global default auth type.
-		Credentials map[string]string `yaml:"credentials"` // Global credentials.
+		Default     string            `yaml:"default"`
+		Credentials map[string]string `yaml:"credentials"`
 	} `yaml:"auth"`
 	Logging struct {
-		Level string `yaml:"level"` // Log verbosity.
+		Level string `yaml:"level"`
 	} `yaml:"logging"`
-	APIs  map[string]APIConfig `yaml:"apis"`            // API endpoint definitions.
-	Chain *ChainConfig         `yaml:"chain,omitempty"` // Optional multi-step workflow.
+	APIs  map[string]APIConfig `yaml:"apis"`
+	Chain *ChainConfig         `yaml:"chain,omitempty"`
 }
 
 // APIConfig defines a single API's configuration.
 type APIConfig struct {
 	BaseURL       string                    `yaml:"base_url"`
-	AuthType      string                    `yaml:"auth_type"`                 // Optional API-specific auth type.
-	TlsSkipVerify bool                      `yaml:"tls_skip_verify,omitempty"` // Set true to disable TLS verification.
-	CookieJar     bool                      `yaml:"cookie_jar,omitempty"`      // NEW: Set true to enable cookie jar management.
-	Endpoints     map[string]EndpointConfig `yaml:"endpoints"`                 // Defined endpoints.
+	AuthType      string                    `yaml:"auth_type"`
+	TlsSkipVerify bool                      `yaml:"tls_skip_verify,omitempty"`
+	CookieJar     bool                      `yaml:"cookie_jar,omitempty"`
+	Endpoints     map[string]EndpointConfig `yaml:"endpoints"`
 }
 
 // EndpointConfig defines an endpoint's details.
@@ -61,12 +62,15 @@ type EndpointConfig struct {
 	Pagination PaginationConfig `yaml:"pagination"`
 }
 
-// PaginationConfig holds pagination settings.
+// PaginationConfig holds pagination settings, including new fields for offset pagination.
 type PaginationConfig struct {
-	Type      string `yaml:"type"`       // "cursor" or "none"
-	Param     string `yaml:"param"`      // For offset-based (not implemented)
-	Limit     int    `yaml:"limit"`      // For offset-based (not implemented)
-	NextField string `yaml:"next_field"` // Field in JSON for next page URL.
+	Type        string `yaml:"type"`                   // "none", "cursor", "offset"
+	Param       string `yaml:"param"`                  // legacy offset param
+	Limit       int    `yaml:"limit"`                  // legacy limit
+	NextField   string `yaml:"next_field"`             // cursor-based next link
+	OffsetParam string `yaml:"offset_param,omitempty"` // name of offset parameter
+	LimitParam  string `yaml:"limit_param,omitempty"`  // name of limit parameter
+	TotalField  string `yaml:"total_field,omitempty"`  // field for total records
 }
 
 // XMLResponse is used to parse XML responses.
@@ -77,34 +81,41 @@ type XMLResponse struct {
 
 // ChainConfig defines a multi-step workflow.
 type ChainConfig struct {
-	Variables map[string]string `yaml:"variables"` // Initial variables for substitution.
-	Steps     []ChainStep       `yaml:"steps"`     // Ordered workflow steps.
+	Variables map[string]string `yaml:"variables"`
+	Steps     []ChainStep       `yaml:"steps"`
+	Output    *ChainOutput      `yaml:"output,omitempty"`
+}
+
+// ChainOutput defines how to write a variable to a file at the end of chain.
+type ChainOutput struct {
+	File string `yaml:"file"`
+	Var  string `yaml:"var"`
 }
 
 // ChainStep represents one step in the workflow.
 type ChainStep struct {
-	Name    string            `yaml:"name"`              // Step name.
-	Request *ChainRequest     `yaml:"request,omitempty"` // API request step.
-	Filter  *ChainFilter      `yaml:"filter,omitempty"`  // Local filtering step.
-	Extract map[string]string `yaml:"extract,omitempty"` // Extraction definitions.
+	Name    string            `yaml:"name"`
+	Request *ChainRequest     `yaml:"request,omitempty"`
+	Filter  *ChainFilter      `yaml:"filter,omitempty"`
+	Extract map[string]string `yaml:"extract,omitempty"`
 }
 
 // ChainRequest defines an API call in a chain.
 type ChainRequest struct {
-	API      string            `yaml:"api"`      // Which API configuration to use.
-	Endpoint string            `yaml:"endpoint"` // The endpoint key.
-	Method   string            `yaml:"method"`   // Optional method override.
+	API      string            `yaml:"api"`
+	Endpoint string            `yaml:"endpoint"`
+	Method   string            `yaml:"method"`
 	Data     string            `yaml:"data,omitempty"`
 	Headers  map[string]string `yaml:"headers,omitempty"`
 }
 
 // ChainFilter defines a local jq filtering step.
 type ChainFilter struct {
-	Input string `yaml:"input"` // JSON input or variable placeholder.
-	Jq    string `yaml:"jq"`    // jq expression to run.
+	Input string `yaml:"input"`
+	Jq    string `yaml:"jq"`
 }
 
-// CLI flags.
+// CLI flags
 var (
 	configFile = flag.String("config", "config.yaml", "YAML configuration file")
 	chainMode  = flag.Bool("chain", false, "Run in chain workflow mode")
@@ -118,17 +129,6 @@ var (
 )
 
 var logLevel int
-
-// logCookieJar logs the cookies stored in the client's cookie jar for a given URL.
-func logCookieJar(jar http.CookieJar, urlStr string) {
-	u, err := url.Parse(urlStr)
-	if err != nil {
-		logMessage("Error parsing URL for cookie jar: "+err.Error(), "debug")
-		return
-	}
-	cookies := jar.Cookies(u)
-	logMessage(fmt.Sprintf("Cookie jar for %s: %v", urlStr, cookies), "debug")
-}
 
 func init() {
 	flag.Usage = func() {
@@ -161,7 +161,6 @@ Examples:
 
   Chain workflow mode:
     api-tool -config=chain.yaml --chain -loglevel=debug
-
 `
 		fmt.Fprintf(os.Stderr, usageText)
 	}
@@ -174,11 +173,9 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	}
-
 	config := loadConfig(*configFile)
 	setLoggingLevel(*verbose)
 
-	// If chain mode is enabled and the chain section exists, run the chain workflow.
 	if *chainMode && config.Chain != nil {
 		if err := runChain(config); err != nil {
 			log.Fatalf("Chain execution failed: %v", err)
@@ -186,13 +183,13 @@ func main() {
 		return
 	}
 
-	// Single request mode: require both -api and -endpoint.
 	if *apiName == "" || *endpoint == "" {
 		fmt.Fprintln(os.Stderr, "Error: -api and -endpoint are required in single request mode.")
 		flag.Usage()
 		os.Exit(1)
 	}
 
+	// Single-request logic
 	apiConf, ok := config.APIs[*apiName]
 	if !ok {
 		log.Fatalf("API '%s' not found", *apiName)
@@ -201,6 +198,8 @@ func main() {
 	if !ok {
 		log.Fatalf("Endpoint '%s' not found in API '%s'", *endpoint, *apiName)
 	}
+
+	// figure out method
 	httpMethod := *methodFlag
 	if httpMethod == "" {
 		if endpointConf.Method != "" {
@@ -213,8 +212,9 @@ func main() {
 	if effectiveAuthType == "" {
 		effectiveAuthType = strings.ToLower(config.Auth.Default)
 	}
+
 	fullURL := os.ExpandEnv(apiConf.BaseURL) + os.ExpandEnv(endpointConf.Path)
-	fullURL = os.ExpandEnv(fullURL)
+
 	payloadStr := os.ExpandEnv(*data)
 	payload := []byte(payloadStr)
 	var bodyReader io.ReadCloser
@@ -240,9 +240,8 @@ func main() {
 		}
 	}
 	setAuthHeaders(req, effectiveAuthType, config)
-	logMessage("Authorization header: "+req.Header.Get("Authorization"), "debug")
 
-	// Create HTTP client, respecting tls_skip_verify.
+	// create client
 	var client *http.Client
 	if apiConf.TlsSkipVerify {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
@@ -264,7 +263,6 @@ func main() {
 			client = &http.Client{}
 		}
 	}
-	// If cookie management is enabled for this API, set up a cookie jar.
 	if apiConf.CookieJar {
 		jar, err := cookiejar.New(nil)
 		if err != nil {
@@ -279,21 +277,34 @@ func main() {
 	if len(payload) > 0 {
 		logMessage(fmt.Sprintf("Payload: %s", payloadStr), "debug")
 	}
-	// Capture all three return values.
+
+	// do single request
 	resp, body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
 	if err != nil {
 		log.Fatalf("Final request failed: %v", err)
 	}
 	logMessage(fmt.Sprintf("Response status: %d", resp.StatusCode), "debug")
 	logMessage(fmt.Sprintf("Response headers: %v", resp.Header), "debug")
-	logMessage("Response body: "+snippet(body), "debug")
-	fmt.Println(string(body))
-	// Log cookie jar contents if enabled.
-	if client.Jar != nil {
-		logCookieJar(client.Jar, apiConf.BaseURL)
+	logMessage("Response body snippet: "+snippet(body), "debug")
+
+	// Print the first page conditionally
+	if logLevel >= 2 { // debug
+		fmt.Println(string(body))
+	} else {
+		logMessage("Large first-page body omitted at info level. Use -loglevel=debug to see it.", "info")
 	}
-	if strings.ToLower(endpointConf.Pagination.Type) == "cursor" {
-		handlePagination(client, req, endpointConf, body, config, effectiveAuthType)
+
+	// handle pagination
+	switch strings.ToLower(endpointConf.Pagination.Type) {
+	case "cursor", "offset":
+		pages := handlePagination(client, req, endpointConf, body, config, effectiveAuthType)
+		if pages != "" {
+			if logLevel >= 2 {
+				fmt.Println(pages)
+			} else {
+				logMessage("Subsequent paginated data omitted at info level. Use -loglevel=debug to see it.", "info")
+			}
+		}
 	}
 }
 
@@ -322,21 +333,23 @@ func setLoggingLevel(level string) {
 
 // logMessage prints a log message if the log level is enabled.
 func logMessage(message string, level string) {
-	if lvl, ok := map[string]int{"none": 0, "info": 1, "debug": 2}[strings.ToLower(level)]; ok && lvl <= logLevel {
+	levels := map[string]int{"none": 0, "info": 1, "debug": 2}
+	if lvl, ok := levels[strings.ToLower(level)]; ok && lvl <= logLevel {
 		log.Println(message)
 	}
 }
 
-// setAuthHeaders applies authentication headers based on the effective auth type.
+// setAuthHeaders applies authentication headers
 func setAuthHeaders(req *http.Request, effectiveAuthType string, config Config) {
 	switch effectiveAuthType {
 	case "none":
+		return
 	case "api_key":
-		if key, ok := config.Auth.Credentials["api_key"]; ok {
-			req.Header.Set("Authorization", "Bearer "+os.ExpandEnv(key))
-		} else {
+		key, ok := config.Auth.Credentials["api_key"]
+		if !ok {
 			log.Fatal("API key not found in credentials")
 		}
+		req.Header.Set("Authorization", "Bearer "+os.ExpandEnv(key))
 	case "bearer":
 		token := os.Getenv("API_TOKEN")
 		if token == "" {
@@ -351,20 +364,20 @@ func setAuthHeaders(req *http.Request, effectiveAuthType string, config Config) 
 		}
 		req.SetBasicAuth(os.ExpandEnv(username), os.ExpandEnv(password))
 	case "digest":
-		// Digest is handled by the digest library.
+		// handled below in the request logic
 	case "oauth2":
-		// OAuth2 is handled by the OAuth2 client.
+		// handled in main for single request
 	default:
 		log.Fatalf("Unsupported auth type: %s", effectiveAuthType)
 	}
 }
 
-// executeRequestWithRetry sends the HTTP request with retry logic.
-// Returns the final *http.Response, the response body, and an error if any.
+// executeRequestWithRetry ...
 func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAuthType string, config Config) (*http.Response, []byte, error) {
 	attempts := 0
 	maxRetries := config.Retry.MaxAttempts
 	backoffTime := config.Retry.Backoff
+
 	for {
 		if req.GetBody != nil && req.Body != nil {
 			newBody, err := req.GetBody()
@@ -373,22 +386,18 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 			}
 			req.Body = newBody
 		}
+
 		logMessage(fmt.Sprintf("Attempt %d: %s %s", attempts+1, req.Method, req.URL.String()), "debug")
+
 		var resp *http.Response
 		var err error
 		if effectiveAuthType == "digest" {
-			username, _ := config.Auth.Credentials["username"]
-			password, _ := config.Auth.Credentials["password"]
+			username := config.Auth.Credentials["username"]
+			password := config.Auth.Credentials["password"]
 			var bodyStr string
 			if req.GetBody != nil {
-				b, err := req.GetBody()
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to get body for digest auth: %v", err)
-				}
-				bodyBytes, err := ioutil.ReadAll(b)
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to read body for digest auth: %v", err)
-				}
+				b, _ := req.GetBody()
+				bodyBytes, _ := ioutil.ReadAll(b)
 				bodyStr = string(bodyBytes)
 			}
 			dr := digest.NewRequest(username, password, req.Method, req.URL.String(), bodyStr)
@@ -399,13 +408,15 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 		if err != nil {
 			logMessage(fmt.Sprintf("Request error: %v", err), "info")
 		} else {
-			body, readErr := ioutil.ReadAll(resp.Body)
+			body, rdErr := ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
-			if readErr != nil {
-				return nil, nil, fmt.Errorf("failed to read response body: %v", readErr)
+			if rdErr != nil {
+				return nil, nil, fmt.Errorf("failed to read response body: %v", rdErr)
 			}
+
 			logMessage(fmt.Sprintf("Response status: %d", resp.StatusCode), "debug")
 			logMessage(fmt.Sprintf("Response headers: %v", resp.Header), "debug")
+
 			retryable := false
 			if resp.StatusCode >= 500 && resp.StatusCode < 600 {
 				retryable = true
@@ -417,19 +428,11 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 				}
 			}
 			if !retryable {
-				ct := resp.Header.Get("Content-Type")
-				if strings.Contains(ct, "application/json") {
-					logMessage("JSON response received", "debug")
-				} else if strings.Contains(ct, "application/xml") || strings.Contains(ct, "text/xml") {
-					logMessage("XML response received", "debug")
-				} else {
-					logMessage(fmt.Sprintf("Response Content-Type: %s", ct), "debug")
-				}
 				return resp, body, nil
 			}
-			logMessage(fmt.Sprintf("Server returned status %d. Retrying...", resp.StatusCode), "info")
 			err = fmt.Errorf("server error: %d", resp.StatusCode)
 		}
+
 		attempts++
 		if attempts >= maxRetries {
 			return nil, nil, fmt.Errorf("max retry attempts reached: %v", err)
@@ -438,38 +441,300 @@ func executeRequestWithRetry(client *http.Client, req *http.Request, effectiveAu
 	}
 }
 
-// handlePagination processes paginated responses.
-func handlePagination(client *http.Client, originalReq *http.Request, endpointConfig EndpointConfig, initialBody []byte, config Config, effectiveAuthType string) {
-	var jsonResponse map[string]interface{}
-	err := json.Unmarshal(initialBody, &jsonResponse)
+// handlePagination handles both cursor- and offset-based pagination.
+// For offset-based responses that include a "results" array,
+// it merges all pages into one JSON object.
+func handlePagination(client *http.Client, originalReq *http.Request, endpointConfig EndpointConfig,
+	initialBody []byte, config Config, effectiveAuthType string) string {
+
+	pagType := strings.ToLower(endpointConfig.Pagination.Type)
+	switch pagType {
+
+	case "cursor":
+		// Cursor-based pagination: include the initial page, then loop.
+		var allPages strings.Builder
+		allPages.Write(initialBody)
+
+		var jsonResponse map[string]interface{}
+		if err := json.Unmarshal(initialBody, &jsonResponse); err != nil {
+			logMessage(fmt.Sprintf("Failed to parse JSON (cursor-based): %v", err), "info")
+			return ""
+		}
+		nextURL, ok := jsonResponse[endpointConfig.Pagination.NextField].(string)
+		for ok && nextURL != "" {
+			logMessage(fmt.Sprintf("Cursor next URL: %s", nextURL), "debug")
+			parsedURL, err := url.Parse(nextURL)
+			if err != nil {
+				logMessage(fmt.Sprintf("Failed to parse next URL '%s': %v", nextURL, err), "info")
+				break
+			}
+			req, err := http.NewRequest("GET", parsedURL.String(), nil)
+			if err != nil {
+				log.Fatalf("Failed to create pagination request: %v", err)
+			}
+			req.Header = originalReq.Header.Clone()
+			_, pageBody, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
+			if err != nil {
+				log.Fatalf("Cursor pagination request failed: %v", err)
+			}
+			allPages.Write(pageBody)
+			// Update nextURL from the new page
+			jsonResponse = map[string]interface{}{}
+			if err := json.Unmarshal(pageBody, &jsonResponse); err != nil {
+				logMessage(fmt.Sprintf("Failed to parse JSON (cursor next page): %v", err), "info")
+				break
+			}
+			nextURL, ok = jsonResponse[endpointConfig.Pagination.NextField].(string)
+		}
+		return allPages.String()
+
+	case "offset":
+		// Offset-based pagination.
+		logMessage("handlePagination initialBody: "+snippet(initialBody), "info")
+		pg := endpointConfig.Pagination
+
+		// Determine parameter names and page size.
+		offsetParam := pg.OffsetParam
+		if offsetParam == "" {
+			offsetParam = pg.Param
+			if offsetParam == "" {
+				offsetParam = "offset"
+			}
+		}
+		limitParam := pg.LimitParam
+		if limitParam == "" {
+			limitParam = "limit"
+		}
+		limit := pg.Limit
+		if limit <= 0 {
+			limit = 100
+		}
+		totalField := pg.TotalField
+		if totalField == "" {
+			totalField = "totalRecords"
+		}
+
+		// When pg.Param equals "in_query", pagination parameters are sent inside the JSON's "query" subobject.
+		paginationInQuery := (strings.ToLower(pg.Param) == "in_query")
+
+		// Parse the initial JSON response.
+		var topLevel map[string]interface{}
+		if err := json.Unmarshal(initialBody, &topLevel); err != nil {
+			logMessage(fmt.Sprintf("Failed to parse JSON (offset-based): %v", err), "info")
+			return ""
+		}
+		var base map[string]interface{}
+		if respObj, ok := topLevel["response"].(map[string]interface{}); ok {
+			base = respObj
+		} else {
+			base = topLevel
+		}
+
+		// Get the total records count.
+		var totalCount int
+		if raw, ok := base[totalField]; ok {
+			switch val := raw.(type) {
+			case float64:
+				totalCount = int(val)
+			case string:
+				n, _ := strconv.Atoi(val)
+				totalCount = n
+			}
+		}
+
+		// Determine how many records were returned in the initial page.
+		var retrieved int
+		if rr, ok := base["returnedRecords"].(float64); ok {
+			retrieved = int(rr)
+		} else if rrStr, ok := base["returnedRecords"].(string); ok {
+			n, _ := strconv.Atoi(rrStr)
+			retrieved = n
+		} else if res, ok := base["results"].([]interface{}); ok {
+			retrieved = len(res)
+		} else {
+			retrieved = limit
+		}
+
+		logMessage(fmt.Sprintf("Offset pagination: totalRecords=%d, firstPageRecords=%d", totalCount, retrieved), "info")
+		// If all records were returned in the first page, no further action is needed.
+		if totalCount <= retrieved {
+			return string(initialBody)
+		}
+
+		// Initialize the merged results with the initial page's results.
+		var mergedResults []interface{}
+		if res, ok := base["results"].([]interface{}); ok {
+			mergedResults = append(mergedResults, res...)
+		} else {
+			mergedResults = []interface{}{}
+		}
+
+		// Loop to retrieve remaining pages.
+		currOffset := retrieved
+		for currOffset < totalCount {
+			logMessage(fmt.Sprintf("Offset pagination iteration: currOffset=%d of %d (limit=%d)", currOffset, totalCount, limit), "info")
+			newReq, err := copyRequest(originalReq)
+			if err != nil {
+				logMessage("Failed to copy request for offset pagination: "+err.Error(), "info")
+				break
+			}
+
+			// Calculate the new page offsets.
+			startVal := currOffset
+			endVal := currOffset + limit
+			logMessage(fmt.Sprintf("Offset pagination: %s=%d, %s=%d", offsetParam, startVal, limitParam, endVal), "debug")
+
+			if strings.ToUpper(newReq.Method) == "GET" {
+				// For GET, add pagination parameters to the query string.
+				q := newReq.URL.Query()
+				q.Set(offsetParam, strconv.Itoa(startVal))
+				q.Set(limitParam, strconv.Itoa(endVal))
+				newReq.URL.RawQuery = q.Encode()
+			} else {
+				// For non-GET requests, update the JSON body.
+				bodyBytes, _ := ioutil.ReadAll(newReq.Body)
+				newReq.Body.Close()
+				var reqJSON map[string]interface{}
+				_ = json.Unmarshal(bodyBytes, &reqJSON)
+				if reqJSON == nil {
+					reqJSON = make(map[string]interface{})
+				}
+				if paginationInQuery {
+					sub, _ := reqJSON["query"].(map[string]interface{})
+					if sub == nil {
+						sub = make(map[string]interface{})
+					}
+					sub[offsetParam] = startVal
+					sub[limitParam] = endVal
+					reqJSON["query"] = sub
+				} else {
+					reqJSON[offsetParam] = startVal
+					reqJSON[limitParam] = endVal
+				}
+				updated, _ := json.Marshal(reqJSON)
+				newReq.Body = ioutil.NopCloser(bytes.NewReader(updated))
+				newReq.ContentLength = int64(len(updated))
+				newReq.GetBody = func() (io.ReadCloser, error) {
+					return ioutil.NopCloser(bytes.NewReader(updated)), nil
+				}
+			}
+
+			_, pageBody, err := executeRequestWithRetry(client, newReq, effectiveAuthType, config)
+			if err != nil {
+				log.Fatalf("Offset pagination request failed: %v", err)
+			}
+
+			// Parse the new page's JSON.
+			var newJSON map[string]interface{}
+			if err := json.Unmarshal(pageBody, &newJSON); err != nil {
+				logMessage(fmt.Sprintf("Failed to parse JSON in offset paging: %v", err), "info")
+				break
+			}
+			var newRespObj map[string]interface{}
+			if sub, ok := newJSON["response"].(map[string]interface{}); ok {
+				newRespObj = sub
+			} else {
+				newRespObj = newJSON
+			}
+			// Append the results from this page.
+			if res, ok := newRespObj["results"].([]interface{}); ok {
+				mergedResults = append(mergedResults, res...)
+			}
+
+			// Update totalCount if the new response provides it.
+			if raw2, ok := newRespObj[totalField]; ok {
+				switch val2 := raw2.(type) {
+				case float64:
+					totalCount = int(val2)
+				case string:
+					n2, _ := strconv.Atoi(val2)
+					if n2 > 0 {
+						totalCount = n2
+					}
+				}
+			}
+
+			// Determine how many records were returned on this page.
+			var newRetrieved int
+			if rr, ok := newRespObj["returnedRecords"].(float64); ok {
+				newRetrieved = int(rr)
+			} else if rrStr, ok := newRespObj["returnedRecords"].(string); ok {
+				n, _ := strconv.Atoi(rrStr)
+				if n > 0 {
+					newRetrieved = n
+				}
+			} else if res, ok := newRespObj["results"].([]interface{}); ok {
+				newRetrieved = len(res)
+			} else {
+				newRetrieved = limit
+			}
+			if newRetrieved == 0 {
+				logMessage("No more records returned; pagination stopping.", "info")
+				break
+			}
+			currOffset += newRetrieved
+			if currOffset >= totalCount {
+				logMessage(fmt.Sprintf("Reached or exceeded total (%d); pagination stopping.", totalCount), "info")
+				break
+			}
+		}
+
+		// Merge the complete results back into the response.
+		base["results"] = mergedResults
+		base["returnedRecords"] = len(mergedResults)
+		base["endOffset"] = strconv.Itoa(len(mergedResults))
+		if _, exists := topLevel["response"]; exists {
+			topLevel["response"] = base
+		} else {
+			topLevel = base
+		}
+		finalData, err := json.Marshal(topLevel)
+		if err != nil {
+			logMessage(fmt.Sprintf("Failed to marshal final merged JSON: %v", err), "info")
+			return ""
+		}
+		return string(finalData)
+
+	default:
+		// If no pagination type is specified, return the initial body.
+		return string(initialBody)
+	}
+}
+
+func copyRequest(req *http.Request) (*http.Request, error) {
+	newReq := req.Clone(req.Context())
+	newReq.Method = req.Method
+	newReq.URL = &url.URL{}
+	*newReq.URL = *req.URL
+	newReq.Header = req.Header.Clone()
+
+	if req.Body != nil && req.GetBody != nil {
+		bCopy, err := req.GetBody()
+		if err != nil {
+			return nil, err
+		}
+		newReq.Body = bCopy
+	}
+	return newReq, nil
+}
+
+func logCookieJar(jar http.CookieJar, urlStr string) {
+	u, err := url.Parse(urlStr)
 	if err != nil {
-		logMessage(fmt.Sprintf("Failed to parse JSON response: %v", err), "info")
+		logMessage("Error parsing URL for cookie jar: "+err.Error(), "debug")
 		return
 	}
-	nextURL, ok := jsonResponse[endpointConfig.Pagination.NextField].(string)
-	for ok && nextURL != "" {
-		parsedURL, err := url.Parse(nextURL)
-		if err != nil {
-			logMessage(fmt.Sprintf("Failed to parse next URL '%s': %v", nextURL, err), "info")
-			return
-		}
-		req, err := http.NewRequest("GET", parsedURL.String(), nil)
-		if err != nil {
-			log.Fatalf("Failed to create pagination request: %v", err)
-		}
-		req.Header = originalReq.Header.Clone()
-		_, body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
-		if err != nil {
-			log.Fatalf("Pagination request failed: %v", err)
-		}
-		fmt.Println(string(body))
-		err = json.Unmarshal(body, &jsonResponse)
-		if err != nil {
-			logMessage(fmt.Sprintf("Failed to parse JSON response during pagination: %v", err), "info")
-			return
-		}
-		nextURL, ok = jsonResponse[endpointConfig.Pagination.NextField].(string)
+	cookies := jar.Cookies(u)
+	logMessage(fmt.Sprintf("Cookie jar for %s: %v", urlStr, cookies), "debug")
+}
+
+// snippet returns a shortened version of the response for debug logging.
+func snippet(b []byte) string {
+	s := string(b)
+	if len(s) > 300 {
+		return s[:300] + "..."
 	}
+	return s
 }
 
 // extractHeader extracts a header value using a regex from the response.
@@ -507,23 +772,13 @@ func runJqFilter(input []byte, jqFilter string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// snippet returns a shortened version of the response for debug logging.
-func snippet(b []byte) string {
-	s := string(b)
-	if len(s) > 300 {
-		return s[:300] + "..."
-	}
-	return s
-}
-
-// runChain executes the workflow defined in the chain section.
+// runChain handles chain steps
 func runChain(config Config) error {
 	state := make(map[string]string)
 	for k, v := range config.Chain.Variables {
 		state[k] = v
 	}
 
-	// Create a persistent cookie jar to be used for all chain steps that require it.
 	persistentJar, err := cookiejar.New(nil)
 	if err != nil {
 		return fmt.Errorf("failed to create persistent cookie jar: %v", err)
@@ -531,6 +786,7 @@ func runChain(config Config) error {
 
 	for _, step := range config.Chain.Steps {
 		logMessage("Executing step: "+step.Name, "info")
+
 		if step.Request != nil {
 			tmpl, err := template.New("data").Parse(step.Request.Data)
 			if err != nil {
@@ -540,6 +796,7 @@ func runChain(config Config) error {
 			if err := tmpl.Execute(&dataBuf, state); err != nil {
 				return fmt.Errorf("executing request data template: %v", err)
 			}
+
 			reqHeaders := make(map[string]string)
 			for key, val := range step.Request.Headers {
 				tmplH, err := template.New("header").Parse(val)
@@ -552,11 +809,17 @@ func runChain(config Config) error {
 				}
 				reqHeaders[key] = hBuf.String()
 			}
+
 			apiConf, ok := config.APIs[step.Request.API]
 			if !ok {
 				return fmt.Errorf("API '%s' not found for step '%s'", step.Request.API, step.Name)
 			}
-			tmplEP, err := template.New("endpoint").Parse(apiConf.BaseURL + apiConf.Endpoints[step.Request.Endpoint].Path)
+			endpointConf, ok := apiConf.Endpoints[step.Request.Endpoint]
+			if !ok {
+				return fmt.Errorf("Endpoint '%s' not found in API '%s'", step.Request.Endpoint, step.Request.API)
+			}
+
+			tmplEP, err := template.New("endpoint").Parse(apiConf.BaseURL + endpointConf.Path)
 			if err != nil {
 				return fmt.Errorf("parsing endpoint template: %v", err)
 			}
@@ -565,10 +828,12 @@ func runChain(config Config) error {
 				return fmt.Errorf("executing endpoint template: %v", err)
 			}
 			fullURL := epBuf.String()
+
 			method := step.Request.Method
 			if method == "" {
-				method = apiConf.Endpoints[step.Request.Endpoint].Method
+				method = endpointConf.Method
 			}
+
 			var reqBody io.Reader
 			if dataBuf.Len() > 0 {
 				reqBody = bytes.NewReader(dataBuf.Bytes())
@@ -581,7 +846,6 @@ func runChain(config Config) error {
 				req.Header.Set(key, val)
 			}
 
-			// Determine effective auth type and apply authentication.
 			effectiveAuthType := strings.ToLower(apiConf.AuthType)
 			if effectiveAuthType == "" {
 				effectiveAuthType = strings.ToLower(config.Auth.Default)
@@ -596,21 +860,37 @@ func runChain(config Config) error {
 			} else {
 				client = &http.Client{}
 			}
-			// Use the persistent cookie jar if cookie management is enabled.
 			if apiConf.CookieJar {
 				client.Jar = persistentJar
 				logMessage("Cookie jar enabled for API '"+step.Request.API+"'", "info")
 			}
+
 			logMessage(fmt.Sprintf("Step '%s': sending request %s %s", step.Name, req.Method, req.URL.String()), "debug")
 			resp, body, err := executeRequestWithRetry(client, req, effectiveAuthType, config)
 			if err != nil {
 				return fmt.Errorf("error in step '%s': %v", step.Name, err)
 			}
 			logMessage(fmt.Sprintf("Step '%s': response body snippet: %s", step.Name, snippet(body)), "debug")
-			// If cookie jar is enabled, log its contents.
+
 			if client.Jar != nil {
 				logCookieJar(client.Jar, apiConf.BaseURL)
 			}
+
+			// gather multi-page data
+			var allData string
+			switch strings.ToLower(endpointConf.Pagination.Type) {
+			case "cursor", "offset":
+				restPages := handlePagination(client, req, endpointConf, body, config, effectiveAuthType)
+				if restPages != "" {
+					allData = string(body) + restPages
+				} else {
+					allData = string(body)
+				}
+			default:
+				allData = string(body)
+			}
+
+			// extract variables from the multi-page content
 			for varName, expr := range step.Extract {
 				trimExpr := strings.TrimSpace(expr)
 				if strings.HasPrefix(trimExpr, "header:") {
@@ -621,14 +901,22 @@ func runChain(config Config) error {
 					state[varName] = extracted
 					logMessage(fmt.Sprintf("Step '%s': extracted %s = %s (from header)", step.Name, varName, extracted), "info")
 				} else {
-					extracted, err := runJqFilter(body, expr)
+					extracted, err := runJqFilter([]byte(allData), expr)
 					if err != nil {
 						return fmt.Errorf("error extracting '%s' in step '%s': %v", varName, step.Name, err)
 					}
 					state[varName] = extracted
-					logMessage(fmt.Sprintf("Step '%s': extracted %s = %s", step.Name, varName, extracted), "info")
+
+					// Truncate if extremely large to prevent console spam
+					const maxExtractLen = 300
+					truncated := extracted
+					if len(truncated) > maxExtractLen {
+						truncated = truncated[:maxExtractLen] + "..."
+					}
+					logMessage(fmt.Sprintf("Step '%s': extracted %s = %s", step.Name, varName, truncated), "info")
 				}
 			}
+
 		} else if step.Filter != nil {
 			tmplInput, err := template.New("filterInput").Parse(step.Filter.Input)
 			if err != nil {
@@ -639,18 +927,49 @@ func runChain(config Config) error {
 				return fmt.Errorf("executing filter input template in step '%s': %v", step.Name, err)
 			}
 			inputJSON := inputBuf.String()
-			result, err := runJqFilter([]byte(inputJSON), step.Filter.Jq)
+
+			tmplJq, err := template.New("jqFilter").Parse(step.Filter.Jq)
+			if err != nil {
+				return fmt.Errorf("parsing jq filter template in step '%s': %v", step.Name, err)
+			}
+			var jqBuf bytes.Buffer
+			if err := tmplJq.Execute(&jqBuf, state); err != nil {
+				return fmt.Errorf("executing jq filter template in step '%s': %v", step.Name, err)
+			}
+			jqFilter := jqBuf.String()
+
+			result, err := runJqFilter([]byte(inputJSON), jqFilter)
 			if err != nil {
 				return fmt.Errorf("error running filter in step '%s': %v", step.Name, err)
 			}
 			for varName, val := range step.Extract {
 				if strings.Contains(val, "{{result}}") {
 					state[varName] = result
-					logMessage(fmt.Sprintf("Step '%s': filtered result: %s = %s", step.Name, varName, result), "info")
+
+					// Also truncate if large
+					const maxExtractLen = 300
+					truncated := result
+					if len(truncated) > maxExtractLen {
+						truncated = truncated[:maxExtractLen] + "..."
+					}
+					logMessage(fmt.Sprintf("Step '%s': filtered result: %s = %s", step.Name, varName, truncated), "info")
 				}
 			}
 		}
 	}
-	logMessage("Final chain state: "+fmt.Sprintf("%v", state), "info")
+
+	// write chain output file if specified
+	if config.Chain.Output != nil && config.Chain.Output.File != "" && config.Chain.Output.Var != "" {
+		val, found := state[config.Chain.Output.Var]
+		if !found {
+			logMessage(fmt.Sprintf("Warning: output var '%s' not found in chain state.", config.Chain.Output.Var), "info")
+		} else {
+			err := ioutil.WriteFile(config.Chain.Output.File, []byte(val), 0644)
+			if err != nil {
+				return fmt.Errorf("failed to write output file '%s': %v", config.Chain.Output.File, err)
+			}
+			logMessage(fmt.Sprintf("Wrote output var '%s' to file '%s'", config.Chain.Output.Var, config.Chain.Output.File), "info")
+		}
+	}
 	return nil
 }
