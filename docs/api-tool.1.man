@@ -1,372 +1,273 @@
 API-TOOL(1)                           Universal REST API Tool Manual                          API-TOOL(1)
 
 NAME
-       api-tool - Universal command-line tool for interacting with REST APIs,
-       supporting multiple authentication methods and multi-step chain workflows.
+api-tool - Universal command-line tool for interacting with REST APIs,
+supporting multiple authentication methods, TLS configuration, persistent cookie jar management,
+and multi-step chain workflows.
 
 SYNOPSIS
-       api-tool [OPTIONS]
+api-tool [OPTIONS]
 
-       api-tool --chain -config <config-file> [--loglevel=<level>] [other options]
+api-tool --chain -config <config-file> [--loglevel=<level>] [other options]
 
 DESCRIPTION
-       api-tool is a flexible command-line application designed to facilitate
-       interactions with REST APIs. It supports a wide range of use cases including:
+api-tool is a flexible command-line application designed to facilitate interactions with REST APIs.
+It supports a wide range of use cases including:
 
-         • Single-request mode: Execute a single API call defined in a YAML configuration file.
-         • Chain workflow mode: Execute a multi-step API workflow (chain) with variable extraction
-           and substitution, enabling complex sequences such as logging in, extracting tokens,
-           and using them in subsequent requests—all without additional scripting.
+  Single-request mode:
+    Execute a single API call defined in a YAML configuration file.
+  Chain workflow mode:
+    Execute a multi-step API workflow (chain) with variable extraction and substitution,
+    enabling complex sequences such as logging in, extracting tokens, and using them in subsequent requests
+    without additional scripting.
 
-       The tool includes built-in retry logic, pagination support, detailed logging, and
-       environment variable substitution (using Go’s text/template). It is designed to be a
-       universal solution covering approximately 95% of REST API scenarios.
+The tool includes built-in retry logic, pagination support, persistent cookie jar management,
+TLS configuration options, detailed logging, and environment variable substitution using Go's text/template.
+It is designed to cover approximately 95% of REST API scenarios.
 
 AUTHENTICATION METHODS SUPPORTED
-       - none:
-             No authentication is applied.
-       - api_key:
-             Sends an API key as a Bearer token in the “Authorization” header.
-       - bearer:
-             Reads a bearer token from the environment variable API_TOKEN.
-       - basic:
-             Uses HTTP Basic authentication with username and password.
-       - ntlm:
-             Supports NTLM authentication (e.g., for SharePoint on-prem).
-       - digest:
-             Uses HTTP Digest authentication (via an external library).
-       - oauth2:
-             Implements OAuth2 client credentials flow.
+none:
+  No authentication is applied.
+api_key:
+  Sends an API key as a Bearer token in the "Authorization" header.
+bearer:
+  Reads a bearer token from the environment variable API_TOKEN.
+basic:
+  Uses HTTP Basic authentication with username and password.
+ntlm:
+  Supports NTLM authentication (for example, for SharePoint on-prem).
+digest:
+  Uses HTTP Digest authentication (via an external library).
+oauth2:
+  Implements OAuth2 client credentials flow.
 
 YAML CONFIGURATION SPECIFICATION
-       The YAML configuration file defines:
-         1. apis:
-               A map of API configurations. Each API includes:
-                 - base_url:       Base URL for the API.
-                 - auth_type:      Optional API-specific authentication type; if not set,
-                                   the global default (under "auth") is used.
-                 - endpoints:      A map of endpoint definitions:
-                      <endpoint_key>:
-                        path:         URL path (supports template syntax, e.g. "/posts/{{.FIRST_ID}}").
-                        method:       HTTP method (GET, POST, etc.).
-                        pagination:
-                          type:       "cursor" (cursor-based) or "none"
-                          param:      (Optional: for offset-based, not yet implemented)
-                          limit:      (Optional: for offset-based)
-                          next_field: JSON field containing the next page URL.
-         2. auth:
-               Global authentication settings:
-                 - default:      Global default auth type ("none", "api_key", "bearer", etc.).
-                 - credentials:  Key/value pairs for credentials (username, password, api_key,
-                                 client_id, client_secret, token_url, scope, etc.).
-         3. retry:
-               Settings for request retries:
-                 - max_attempts: Maximum retry attempts.
-                 - backoff_seconds: Delay between retries in seconds.
-                 - exclude_errors: List of HTTP status codes that should not trigger a retry.
-         4. logging:
-               Logging level ("none", "info", "debug").
-         5. chain (optional):
-               A multi-step workflow specification containing:
-                 - variables: Initial variable mappings for substitution.
-                 - steps: An ordered list of steps. Each step may have:
-                      • request: An API call step.
-                          - api:      The API configuration key to use.
-                          - endpoint: The endpoint key (from the API configuration).
-                          - method:   Optional override of the HTTP method.
-                          - data:     Optional request body (supports template substitution).
-                          - headers:  Optional headers (supports template substitution).
-                      • filter: A local step to process JSON using a jq expression.
-                          - input:    JSON input or a variable placeholder.
-                          - jq:       The jq expression to run.
-                      • extract: A mapping of variable names to jq expressions.
-                          The extracted values are stored in the chain state and can be
-                          referenced in subsequent steps via template syntax (e.g. {{.VAR_NAME}}).
+The YAML configuration file defines the following sections:
+
+1. apis:
+   A map of API configurations. Each API definition includes:
+     base_url:
+       Base URL for the API.
+     auth_type:
+       Optional API-specific authentication type; if not set, the global default (under "auth") is used.
+     tls_skip_verify:
+       (Optional) Boolean. If true, disables TLS certificate verification for this API.
+       Useful for testing with self-signed or invalid certificates.
+     cookie_jar:
+       (Optional) Boolean. If true, enables persistent cookie jar management for this API.
+       This preserves cookies (for example, session cookies) across multiple requests.
+     endpoints:
+       A map of endpoint definitions. Each endpoint contains:
+         path:
+           URL path (supports template syntax, e.g. "/posts/{{.FIRST_ID}}").
+         method:
+           HTTP method (GET, POST, etc.).
+         pagination:
+           Optional pagination settings:
+             type:
+               Type of pagination ("cursor" or "none").
+             param:
+               (Optional) For offset-based pagination (not yet implemented).
+             limit:
+               (Optional) For offset-based pagination.
+             next_field:
+               JSON field that contains the URL for the next page.
+
+2. auth:
+   Global authentication settings:
+     default:
+       Global default authentication type (e.g., "none", "basic", "bearer").
+     credentials:
+       Key/value pairs for credentials (e.g., username, password, api_key, client_id, etc.).
+
+3. retry:
+   Settings for request retry logic:
+     max_attempts:
+       Maximum number of retry attempts.
+     backoff_seconds:
+       Delay between retries in seconds.
+     exclude_errors:
+       List of HTTP status codes that should not trigger a retry.
+
+4. logging:
+   Logging settings:
+     level:
+       Logging level ("none", "info", "debug").
+
+5. chain (optional):
+   Defines a multi-step workflow containing:
+     variables:
+       Initial variable mappings for template substitution.
+     steps:
+       An ordered list of steps. Each step may include:
+         request:
+           An API call step with:
+             api:
+               The API configuration key to use.
+             endpoint:
+               The endpoint key from the chosen API.
+             method:
+               Optional override for the HTTP method.
+             data:
+               Optional request body (supports template substitution).
+             headers:
+               Optional headers (supports template substitution).
+         filter:
+           A local processing step using a jq expression.
+             input:
+               JSON input or a variable placeholder.
+             jq:
+               The jq expression to execute.
+         extract:
+           A mapping of variable names to jq expressions.
+           Extracted values are stored in the chain state for use in subsequent steps.
 
 TEMPLATE SUBSTITUTION
-       The tool uses Go’s text/template for variable substitution in:
-         - Endpoint paths
-         - Request bodies (data)
-         - Header values
-       Placeholders such as {{.VAR_NAME}} are replaced with values from the chain state.
+Placeholders in endpoint paths, request data, and headers (e.g. {{.VAR_NAME}}) are substituted using Go's text/template
+package with values from the chain state.
+
+TLS CONFIGURATION
+Within each API configuration, the optional key tls_skip_verify can be set to true to disable TLS certificate validation.
+This is useful when connecting to servers with self-signed or otherwise invalid certificates.
+Note: Disabling certificate verification is not recommended for production environments due to security risks.
+
+COOKIE JAR MANAGEMENT
+When the cookie_jar option is enabled in an API configuration, api-tool creates a persistent cookie jar that stores and reuses cookies,
+for example, session cookies returned upon login. This is particularly important for chain workflows where subsequent API calls rely on a maintained session.
 
 COMMAND-LINE OPTIONS
-       -config string
-              YAML configuration file (default "config.yaml").
-
-       -chain
-              Run in chain workflow mode. The config file must include a chain section.
-
-       -api string
-              API name for single-request mode (must match a key under "apis").
-
-       -endpoint string
-              Endpoint name for single-request mode (must match a key under the chosen API’s "endpoints").
-
-       -method string
-              Override the HTTP method for the request.
-
-       -headers string
-              Additional headers in the format "Key:Value,Key:Value".
-
-       -data string
-              JSON payload for POST/PUT requests.
-
-       -loglevel string
-              Logging level ("none", "info", "debug"). Default is "info".
-
-       -help
-              Display this help message and exit.
+-config string
+    YAML configuration file (default "config.yaml").
+-chain
+    Run in chain workflow mode. The configuration file must include a chain section.
+-api string
+    API name for single-request mode (must match a key under "apis").
+-endpoint string
+    Endpoint name for single-request mode (must match a key under the selected API's "endpoints").
+-method string
+    Override the HTTP method for the request.
+-headers string
+    Additional headers in the format "Key:Value,Key:Value".
+-data string
+    JSON payload for POST/PUT requests.
+-loglevel string
+    Logging level ("none", "info", "debug"). Default is "info".
+-help
+    Display the help message and exit.
 
 ENVIRONMENT VARIABLES
-       API_TOKEN
-              Used when the authentication method is set to "bearer". Must be set if using
-              bearer token authentication.
-
-YAML EXAMPLES
-
-1. Single-Request Mode (No Authentication)
-   ------------------------------------------
-   Example config.yaml:
-       apis:
-         jsonplaceholder:
-           base_url: "https://jsonplaceholder.typicode.com"
-           auth_type: "none"
-           endpoints:
-             get_posts:
-               path: "/posts"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "none"
-         credentials: {}
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-
-   Command:
-       api-tool -config=config.yaml -api jsonplaceholder -endpoint get_posts -loglevel=debug
-
-2. Single-Request Mode (Basic Authentication)
-   ---------------------------------------------
-   Example config.yaml:
-       apis:
-         httpbin:
-           base_url: "http://httpbin.org"
-           auth_type: "basic"
-           endpoints:
-             basic_auth:
-               path: "/basic-auth/user/passwd"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "basic"
-         credentials:
-           username: "user"
-           password: "passwd"
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-
-   Command:
-       api-tool -config=config.yaml -api httpbin -endpoint basic_auth -loglevel=debug
-
-3. Single-Request Mode (Bearer Token)
-   ------------------------------------
-   Example config.yaml:
-       apis:
-         httpbin:
-           base_url: "http://httpbin.org"
-           auth_type: "bearer"
-           endpoints:
-             bearer:
-               path: "/bearer"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "bearer"
-         credentials: {}
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-
-   Command:
-       export API_TOKEN="your_bearer_token"
-       api-tool -config=config.yaml -api httpbin -endpoint bearer -loglevel=debug
-
-4. Single-Request Mode (NTLM Authentication)
-   -------------------------------------------
-   Example config.yaml:
-       apis:
-         sharepoint:
-           base_url: "http://sharepointserver/sites/your_site"
-           auth_type: "ntlm"
-           endpoints:
-             get_list:
-               path: "/_api/web/lists/getbytitle('YourList')/items"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "ntlm"
-         credentials:
-           username: "DOMAIN\\username"
-           password: "your_password"
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-
-   Command:
-       api-tool -config=config.yaml -api sharepoint -endpoint get_list -loglevel=debug
-
-5. Single-Request Mode (Digest Authentication)
-   ---------------------------------------------
-   Example config.yaml:
-       apis:
-         httpbin:
-           base_url: "http://httpbin.org"
-           auth_type: "digest"
-           endpoints:
-             digest_auth:
-               path: "/digest-auth/auth/user/passwd"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "digest"
-         credentials:
-           username: "user"
-           password: "passwd"
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-
-   Command:
-       api-tool -config=config.yaml -api httpbin -endpoint digest_auth -loglevel=debug
-
-6. Single-Request Mode (OAuth2 Client Credentials)
-   -------------------------------------------------
-   Example config.yaml:
-       apis:
-         oauthapi:
-           base_url: "https://api.example.com"
-           auth_type: "oauth2"
-           endpoints:
-             get_data:
-               path: "/data"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "oauth2"
-         credentials:
-           client_id: "your_client_id"
-           client_secret: "your_client_secret"
-           token_url: "https://api.example.com/oauth/token"
-           scope: "read:data"
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-
-   Command:
-       api-tool -config=config.yaml -api oauthapi -endpoint get_data -loglevel=debug
-
-7. Chain Workflow Mode
-   ---------------------
-   Example test_chain.yaml:
-       apis:
-         testapi:
-           base_url: "https://jsonplaceholder.typicode.com"
-           auth_type: "none"
-           endpoints:
-             get_posts:
-               path: "/posts"
-               method: "GET"
-               pagination:
-                 type: "none"
-             get_post:
-               path: "/posts/{{.FIRST_ID}}"
-               method: "GET"
-               pagination:
-                 type: "none"
-       auth:
-         default: "none"
-         credentials: {}
-       retry:
-         max_attempts: 3
-         backoff_seconds: 2
-         exclude_errors: [401, 403]
-       logging:
-         level: "debug"
-       chain:
-         variables: {}
-         steps:
-           - name: list_posts
-             request:
-               api: "testapi"
-               endpoint: "get_posts"
-               method: "GET"
-             extract:
-               FIRST_ID: ".[0].id"
-           - name: get_post
-             request:
-               api: "testapi"
-               endpoint: "get_post"
-               method: "GET"
-
-   Command:
-       api-tool -config=test_chain.yaml --chain -loglevel=debug
-
-TEMPLATE SUBSTITUTION
-       Placeholders in request data, headers, and endpoint paths (e.g., {{.VAR_NAME}})
-       are substituted using values from the chain state. This allows dynamic parameter
-       injection between steps.
-
-COMMAND-LINE BEHAVIOR
-       In single-request mode, both -api and -endpoint are required.
-       In chain mode, the tool ignores -api and -endpoint and executes the workflow
-       defined in the chain section.
-       Running the tool with no arguments or with -help displays this manual page.
-
-ENVIRONMENT VARIABLES
-       API_TOKEN
-              Required when using "bearer" authentication.
+API_TOKEN
+    Required when using "bearer" authentication. Must be set to the bearer token value.
 
 EXAMPLES
-       See the above examples for a complete set of use cases covering:
-         • No authentication.
-         • Basic, NTLM, Digest, and OAuth2 authentication.
-         • Chain workflows for multi-step API sequences.
 
-MAN PAGE USAGE
-       To display this manual page, run:
-           api-tool -help
+1. Single-Request Mode (No Authentication)
+Example config.yaml:
+  apis:
+    jsonplaceholder:
+      base_url: "https://jsonplaceholder.typicode.com"
+      auth_type: "none"
+      tls_skip_verify: false
+      cookie_jar: false
+      endpoints:
+        get_posts:
+          path: "/posts"
+          method: "GET"
+          pagination:
+            type: "none"
+  auth:
+    default: "none"
+    credentials: {}
+  retry:
+    max_attempts: 3
+    backoff_seconds: 2
+    exclude_errors: [401, 403]
+  logging:
+    level: "debug"
+
+Command:
+  api-tool -config=config.yaml -api jsonplaceholder -endpoint get_posts -loglevel=debug
+
+2. Single-Request Mode (Basic Authentication)
+Example config.yaml:
+  apis:
+    httpbin:
+      base_url: "http://httpbin.org"
+      auth_type: "basic"
+      tls_skip_verify: false
+      cookie_jar: false
+      endpoints:
+        basic_auth:
+          path: "/basic-auth/user/passwd"
+          method: "GET"
+          pagination:
+            type: "none"
+  auth:
+    default: "basic"
+    credentials:
+      username: "user"
+      password: "passwd"
+  retry:
+    max_attempts: 3
+    backoff_seconds: 2
+    exclude_errors: [401, 403]
+  logging:
+    level: "debug"
+
+Command:
+  api-tool -config=config.yaml -api httpbin -endpoint basic_auth -loglevel=debug
+
+3. Chain Workflow Mode
+Example test_chain.yaml:
+  apis:
+    testapi:
+      base_url: "https://jsonplaceholder.typicode.com"
+      auth_type: "none"
+      tls_skip_verify: false
+      cookie_jar: false
+      endpoints:
+        get_posts:
+          path: "/posts"
+          method: "GET"
+          pagination:
+            type: "none"
+        get_post:
+          path: "/posts/{{.FIRST_ID}}"
+          method: "GET"
+          pagination:
+            type: "none"
+  auth:
+    default: "none"
+    credentials: {}
+  retry:
+    max_attempts: 3
+    backoff_seconds: 2
+    exclude_errors: [401, 403]
+  logging:
+    level: "debug"
+  chain:
+    variables: {}
+    steps:
+      - name: list_posts
+        request:
+          api: "testapi"
+          endpoint: "get_posts"
+          method: "GET"
+        extract:
+          FIRST_ID: ".[0].id"
+      - name: get_post
+        request:
+          api: "testapi"
+          endpoint: "get_post"
+          method: "GET"
+
+Command:
+  api-tool -config=test_chain.yaml --chain -loglevel=debug
 
 COPYRIGHT
-       Copyright (C) 2025 Your Name.
+Copyright (C) 2025 Your Name.
 
 SEE ALSO
-       jq(1), curl(1), go (1)
-       https://stedolan.github.io/jq/manual/
-       https://taskfile.dev/
+jq(1), curl(1), go(1)
+https://stedolan.github.io/jq/manual/
+https://taskfile.dev/
