@@ -102,3 +102,6 @@ To display the help message and full manual, run:
 
 ## License
 API Tool is released under the MIT License. See the LICENSE file for details.
+
+## Acknowledgments
+This tool is a personal project that I created as a way to learn Golang. While ChatGPT assisted with coding, I provided significant guidance and oversight throughout the development process. As someone with prior development experience, I wanted to go beyond a simple “Hello, World” program and build something genuinely useful to me as an automator.
