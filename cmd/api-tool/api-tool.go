@@ -772,9 +772,16 @@ func runJqFilter(input []byte, jqFilter string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// runChain handles chain steps
 func runChain(config Config) error {
+	// Merge OS environment variables into the chain context.
 	state := make(map[string]string)
+	for _, envVar := range os.Environ() {
+		parts := strings.SplitN(envVar, "=", 2)
+		if len(parts) == 2 {
+			state[parts[0]] = parts[1]
+		}
+	}
+	// Override with chain-specific variables from the configuration.
 	for k, v := range config.Chain.Variables {
 		state[k] = v
 	}
@@ -876,7 +883,7 @@ func runChain(config Config) error {
 				logCookieJar(client.Jar, apiConf.BaseURL)
 			}
 
-			// gather multi-page data
+			// Gather multi-page data.
 			var allData string
 			switch strings.ToLower(endpointConf.Pagination.Type) {
 			case "cursor", "offset":
@@ -890,7 +897,7 @@ func runChain(config Config) error {
 				allData = string(body)
 			}
 
-			// extract variables from the multi-page content
+			// Extract variables from the multi-page content.
 			for varName, expr := range step.Extract {
 				trimExpr := strings.TrimSpace(expr)
 				if strings.HasPrefix(trimExpr, "header:") {
@@ -907,7 +914,7 @@ func runChain(config Config) error {
 					}
 					state[varName] = extracted
 
-					// Truncate if extremely large to prevent console spam
+					// Truncate if extremely large to prevent console spam.
 					const maxExtractLen = 300
 					truncated := extracted
 					if len(truncated) > maxExtractLen {
@@ -946,7 +953,7 @@ func runChain(config Config) error {
 				if strings.Contains(val, "{{result}}") {
 					state[varName] = result
 
-					// Also truncate if large
+					// Also truncate if large.
 					const maxExtractLen = 300
 					truncated := result
 					if len(truncated) > maxExtractLen {
@@ -958,7 +965,7 @@ func runChain(config Config) error {
 		}
 	}
 
-	// write chain output file if specified
+	// Write chain output file if specified.
 	if config.Chain.Output != nil && config.Chain.Output.File != "" && config.Chain.Output.Var != "" {
 		val, found := state[config.Chain.Output.Var]
 		if !found {
