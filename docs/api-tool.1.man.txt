@@ -1,0 +1,636 @@
+API-TOOL(1)                  api-tool Manual                 API-TOOL(1)
+
+NAME
+       api-tool - Flexible command-line tool for automating REST API interactions.
+
+SYNOPSIS
+       api-tool [OPTIONS]
+
+       api-tool [OPTIONS] -api API_NAME -endpoint ENDPOINT_NAME [REQUEST_OVERRIDES]
+
+       api-tool [OPTIONS] -chain
+
+DESCRIPTION
+       api-tool is a versatile utility designed to interact with REST APIs via configuration files and command-line flags. It facilitates automation by supporting single API requests with parameter overrides, as well as complex, multi-step "chain" workflows.
+
+       Key capabilities include various authentication methods (Basic, Bearer, API Key, Digest, NTLM, OAuth2 Client Credentials), automatic handling of common pagination strategies (Offset, Page, Cursor, Link Header), data extraction from responses using JQ filters or header regex, file uploads (raw or multipart), response downloads, templating of configuration values using Go's text/template syntax, and expansion of system environment variables.
+
+       It is intended for use in automation scripts, CI/CD pipelines, and containerized environments, often working in conjunction with data processing tools.
+
+OPTIONS
+       -config FILENAME
+              Specify the path to the YAML configuration file. Defaults to config.yaml in the current directory.
+
+       -chain
+              Run in chain workflow mode. Requires a `chain` section to be defined in the configuration file. This flag is mutually exclusive with -api and -endpoint.
+
+       -api API_NAME
+              Specify the name of the API configuration (defined in the `apis` section of the config file) to use for single request mode. Required if -chain is not used.
+
+       -endpoint ENDPOINT_NAME
+              Specify the name of the endpoint configuration (defined within the specified API's `endpoints` section) to use for single request mode. Required if -chain is not used.
+
+       -method METHOD
+              Override the HTTP method (e.g., GET, POST, PUT) defined in the endpoint configuration for single request mode.
+
+       -headers HEADERS_STRING
+              Specify additional or overriding HTTP headers for single request mode. Format is a comma-separated string of "Key:Value" pairs (e.g., "Accept:application/json,X-Custom:value"). Values support environment variable expansion.
+
+       -data JSON_PAYLOAD
+              Provide the JSON request body for single request mode, typically used with POST or PUT methods. Supports environment variable expansion.
+
+       -loglevel LEVEL
+              Set the logging verbosity. Valid levels are: `none`, `error`, `warn` (or `warning`), `info` (default), `debug`. Overrides the level set in the configuration file.
+
+       -help
+              Display usage information and exit.
+
+MODES
+       api-tool operates in two distinct modes:
+
+       Single Request Mode
+              Activated by providing the -api and -endpoint flags. Executes a single API call based on the specified configuration, allowing overrides via -method, -headers, and -data. Pagination configured for the endpoint will be handled automatically. The final response body (potentially aggregated from pagination) is printed to standard output.
+
+       Chain Workflow Mode
+              Activated by providing the -chain flag. Executes a sequence of steps defined in the `chain` section of the configuration file. This mode allows complex interactions, passing data between steps, local filtering, file handling, and conditional logic (via templating). Output is typically managed via the `chain.output` configuration or side effects like file downloads.
+
+CONFIGURATION
+       api-tool relies on a YAML configuration file (default `config.yaml`) for defining APIs, authentication, workflow steps, and other settings.
+
+   Top-Level Configuration Keys
+
+       retry (Object, Optional)
+              Defines global settings for automatic request retries.
+
+              max_attempts (Integer, Default: 1)
+                     The maximum number of times to attempt a request before failing. Includes the initial attempt.
+              backoff_seconds (Integer, Default: 1)
+                     The initial delay in seconds before the first retry. Subsequent retries use exponential backoff (currently implemented as fixed backoff). Must be at least 1.
+              exclude_errors (Array of Integers, Optional)
+                     A list of HTTP status codes (e.g., 401, 404) that should *not* trigger a retry, even if they are in the 4xx/5xx range that might otherwise be retried (currently retries 5xx by default).
+
+       auth (Object, Optional)
+              Defines global authentication settings and credentials.
+
+              default (String, Default: "none")
+                     The default authentication type to use if an API definition does not specify its own `auth_type`. Valid types are listed in the AUTHENTICATION section.
+              credentials (Object, Optional)
+                     A map containing credentials needed for various authentication types. Keys depend on the auth type used (globally or per-API). Environment variables ($VAR or %VAR%) can be used within credential values. See AUTHENTICATION section for required keys per type.
+
+       logging (Object, Optional)
+              Configures logging behavior.
+
+              level (String, Default: "info")
+                     Sets the logging verbosity level. Valid levels: `none`, `error`, `warn`, `warning`, `info`, `debug`. The -loglevel command-line flag overrides this.
+
+       fips_mode (Boolean, Optional, Default: `false`)
+              If set to `true`, enables FIPS compliance mode. This currently affects `digest` authentication by disallowing MD5 algorithms. For `oauth2`, it serves as an indicator, but true compliance depends on the underlying Go crypto libraries.
+
+       apis (Object, Required)
+              A map defining one or more APIs that the tool can interact with. The keys are unique names used to reference the API (e.g., in -api flag or chain steps).
+
+              API_NAME: (Object) Configuration for a specific API.
+
+                     base_url (String, Required)
+                            The base URL for all endpoints within this API (e.g., "https://api.example.com/v2"). Must include the scheme (http or https). Supports environment variable expansion.
+                     auth_type (String, Optional)
+                            The authentication type specific to this API, overriding the global `auth.default`. See AUTHENTICATION section for valid types. If omitted, the global default is used.
+                     tls_skip_verify (Boolean, Optional, Default: false)
+                            If set to `true`, disables TLS certificate verification for requests to this API. Use with extreme caution, primarily for testing against environments with self-signed certificates.
+                     cookie_jar (Boolean, Optional, Default: false)
+                            If set to `true`, enables a cookie jar for this API. In single request mode, cookies are maintained only for the duration of that request (including pagination). In chain mode, cookies are persisted across all steps that use an API with `cookie_jar: true`.
+                     endpoints (Object, Required)
+                            A map defining one or more endpoints for this API. The keys are unique names used to reference the endpoint (e.g., in -endpoint flag or chain steps).
+
+                            ENDPOINT_NAME: (Object) Configuration for a specific endpoint.
+
+                                   path (String, Required)
+                                          The path for this endpoint, appended to the API's `base_url` (e.g., "/users", "/items/{id}"). Supports environment variable expansion, but templating is applied later during chain execution.
+                                   method (String, Optional, Default: GET)
+                                          The default HTTP method for this endpoint (e.g., "GET", "POST", "PUT"). Can be overridden by chain steps or the -method flag.
+                                   pagination (Object, Optional)
+                                          Configuration for automatic pagination handling for this endpoint. See PAGINATION section for details.
+
+       chain (Object, Optional)
+              Defines a multi-step workflow. Required if the -chain flag is used.
+
+              variables (Object, Optional)
+                     A map of initial key-value string variables available to all steps in the chain state. System environment variables are automatically merged into this initial state (config variables take precedence).
+              steps (Array of Objects, Required)
+                     An ordered list of steps to be executed. Each step is an object.
+
+                     (Step Object)
+
+                            name (String, Optional)
+                                   A descriptive name for the step, used in logging output.
+                            request (Object, Optional)
+                                   Defines an API request step. Mutually exclusive with `filter`.
+
+                                   api (String, Required)
+                                          The name of the API (defined in the top-level `apis` map) to use for this request.
+                                   endpoint (String, Required)
+                                          The name of the endpoint (defined within the specified API) to use for this request.
+                                   method (String, Optional)
+                                          Overrides the HTTP method defined in the endpoint configuration for this specific step.
+                                   headers (Object, Optional)
+                                          A map of HTTP headers (Key: Value strings) to send with this request. These are merged with/override default headers. Values support Go templating (`{{.VarName}}`) and environment variable expansion.
+                                   data (String, Optional)
+                                          The request body as a string. Mutually exclusive with `upload_body_from` and `form_data`/`file_fields`. Supports Go templating and environment variable expansion. If `Content-Type` header is not set, it defaults to `application/json` if the data looks like JSON.
+                                   upload_body_from (String, Optional)
+                                          Path to a local file whose raw content will be sent as the request body. Mutually exclusive with `data` and `form_data`/`file_fields`. Typically used with PUT/POST. Sets `Content-Type` to `application/octet-stream` if not overridden in `headers`. Supports Go templating and environment variable expansion in the path. Not recommended with GET method (validation warning).
+                                   form_data (Object, Optional)
+                                          A map of key-value strings for regular form fields in a `multipart/form-data` request. Mutually exclusive with `data` and `upload_body_from`. Values support Go templating and environment variable expansion. Typically used with POST/PUT/PATCH.
+                                   file_fields (Object, Optional)
+                                          A map where keys are the form field names and values are paths to local files to be included in a `multipart/form-data` request. Mutually exclusive with `data` and `upload_body_from`. File paths support Go templating and environment variable expansion. Typically used with POST/PUT/PATCH.
+                                   download_to (String, Optional)
+                                          If specified, the raw response body of this request step will be saved to the given file path. The path supports Go templating and environment variable expansion. If used, data cannot be extracted from the response *body* using JQ in the `extract` section (header extraction is still allowed). Typically used with GET requests.
+
+                            filter (Object, Optional)
+                                   Defines a local data filtering step using the external `jq` command. Mutually exclusive with `request`. Requires `jq` to be installed and in the system's PATH.
+
+                                   input (String, Required)
+                                          The input string to be piped into the `jq` command. Supports Go templating and environment variable expansion.
+                                   jq (String, Required)
+                                          The JQ filter expression to apply to the input. Supports Go templating and environment variable expansion.
+
+                            extract (Object, Optional)
+                                   A map defining how to extract values after a `request` or `filter` step and save them into the chain's state variables for subsequent steps. The map keys are the variable names to create/update.
+
+                                   For `request` steps:
+
+                                          "header:HEADER_NAME:(REGEX)"
+                                                 Extracts data from the response header named `HEADER_NAME` using the provided Go regular expression `REGEX`. The value of the *first capturing group* `()` in the regex is assigned to the variable. Returns an error if the header is not found or the regex does not match/capture.
+                                          "JQ_FILTER"
+                                                 Extracts data from the response body using the provided JQ filter. The raw string output of the JQ filter is assigned to the variable. This cannot be used if the step includes `download_to`.
+
+                                   For `filter` steps:
+
+                                          "{{result}}"
+                                                 Assigns the entire raw string output of the `jq` filter to the variable.
+                                          "GO_TEMPLATE_STRING"
+                                                 Renders the given Go template string. The raw output of the `jq` filter is available within the template as `{{.result}}`. All other current chain state variables are also available (e.g., `{{.PREVIOUS_VAR}}`).
+
+              output (Object, Optional)
+                     Defines how to write a specific variable from the final chain state to a file after all steps complete.
+
+                     file (String, Required)
+                            The path to the output file. Supports Go templating and environment variable expansion. Directories will be created if they don't exist.
+                     var (String, Required)
+                            The name of the chain state variable whose value should be written to the file. If the variable doesn't exist in the final state, no file is written (a warning may be logged).
+
+   Pagination Configuration (`pagination` Object)
+       Used within an endpoint definition.
+
+       type (String, Required)
+              Specifies the pagination strategy. Valid types:
+              none (or omitted): No pagination.
+              offset: Uses limit and offset parameters.
+              page: Uses page number and size/limit parameters.
+              cursor: Uses a cursor value obtained from the previous response to fetch the next page.
+              link_header: Uses the `Link` HTTP response header with `rel="next"` (RFC 5988).
+
+       results_field (String, Default: "results")
+              A JQ path expression pointing to the array of data items within the JSON response body.
+
+       param_location (String, Default: "query")
+              Where pagination parameters (offset, limit, page, size, cursor) should be sent in subsequent requests:
+              query: Appends parameters to the URL query string.
+              body: Adds/updates parameters within the JSON request body. Requires the request method to support a body (e.g., POST).
+
+       body_path (String, Optional)
+              If `param_location` is `body`, this specifies a dot-notation path to a nested JSON object where the pagination parameters should be placed (e.g., "query.options"). If empty, parameters are placed at the root of the JSON body. Intermediate objects are created if they don't exist. Invalid paths (e.g., containing `..`, starting/ending with `.`, or targeting a non-object field) will cause errors.
+
+       max_pages (Integer, Optional, Default: 0)
+              Maximum number of pages to fetch. `0` or omitted means no limit. The initial request counts as the first page.
+
+       -- Offset/Page Specific --
+
+       limit (Integer, Required for `offset`/`page`)
+              The number of items to request per page. Must be positive.
+
+       strategy (String, Optional)
+              For `type: offset` or `type: page`. Explicitly defines whether to use `offset` or `page` number logic. If omitted, defaults to the `type`. Valid values: "offset", "page".
+
+       offset_param (String, Default: "offset")
+              Parameter name for the offset (used when `strategy` is `offset`).
+
+       limit_param (String, Default: "limit" for offset, `size_param` default for page)
+              Parameter name for the limit/size.
+
+       page_param (String, Default: "page")
+              Parameter name for the page number (used when `strategy` is `page`).
+
+       size_param (String, Default: "size")
+              Parameter name for the page size (used when `strategy` is `page`). If `limit_param` is not set, this is used as the default for `limit_param`.
+
+       start_page (Integer, Default: 1)
+              The page number to start with for `page` strategy. Must be non-negative.
+
+       total_field (String, Optional)
+              JQ path to a field in the response body containing the total number of records available. Used as a hint to stop pagination early.
+
+       total_header (String, Optional)
+              Name of an HTTP response header containing the total number of records available. Used as a hint to stop pagination early if `total_field` is not found/used.
+
+       -- Cursor Specific --
+
+       next_field (String, Required if `next_header` not set)
+              JQ path to a field in the response body containing the cursor value for the *next* page. If the field is missing, null, or empty, pagination stops.
+
+       next_header (String, Required if `next_field` not set)
+              Name of an HTTP response header containing the cursor value for the *next* page. If the header is missing or empty, pagination stops.
+
+       cursor_usage_mode (String, Default: "query")
+              Defines how the extracted `next_cursor` value is used in the subsequent request:
+              query: The cursor value is sent as a query parameter named by `cursor_param`.
+              body: The cursor value is added/updated in the JSON request body at the path specified by `body_path`, using the key `cursor_param`.
+              url: The cursor value is treated as a complete (potentially relative) URL for the next request. Method is forced to GET, and any request body is removed.
+
+       cursor_param (String, Default: "cursor")
+              The name of the query parameter or JSON body field to use when `cursor_usage_mode` is `query` or `body`.
+
+AUTHENTICATION
+       api-tool supports various authentication schemes, configured globally via `auth.default` or per API via `apis.<api_name>.auth_type`. Credentials are typically stored in the `auth.credentials` map.
+
+       none
+              No authentication is performed. This is the default if no other type is specified.
+
+       basic
+              HTTP Basic Authentication.
+              Requires: `username` and `password` in `auth.credentials`.
+              Mechanism: Sends `Authorization: Basic <base64(username:password)>` header.
+
+       bearer
+              Bearer Token Authentication.
+              Requires: `API_TOKEN` environment variable set to the token value. Alternatively, if `API_TOKEN` is not set, requires `bearer_token` key in `auth.credentials`. The environment variable takes precedence.
+              Mechanism: Sends `Authorization: Bearer <token>` header.
+
+       api_key
+              Generic API Key authentication (sent as a Bearer token).
+              Requires: `api_key` in `auth.credentials`.
+              Mechanism: Sends `Authorization: Bearer <api_key>` header.
+
+       digest
+              HTTP Digest Access Authentication.
+              Requires: `username` and `password` in `auth.credentials`.
+              Mechanism: Performs Digest challenge-response handshake. Supports MD5 and SHA-256 algorithms (MD5 is disabled if `fips_mode: true`).
+
+       ntlm
+              NTLM Authentication.
+              Requires: `username` and `password` in `auth.credentials`.
+              Mechanism: Uses NTLM negotiation via the underlying HTTP transport.
+
+       oauth2
+              OAuth 2.0 Client Credentials Grant Flow.
+              Requires: `client_id`, `client_secret`, and `token_url` in `auth.credentials`. `scope` (space-separated string) is optional.
+              Mechanism: Automatically fetches an access token from the `token_url` using the provided client credentials and scope. Sends the obtained token as an `Authorization: Bearer <access_token>` header on subsequent requests to the API. Handles token expiry and refresh transparently.
+
+PAGINATION
+       api-tool can automatically handle paginated API responses based on the `pagination` configuration for an endpoint. It aggregates results from all pages into a single final JSON array string.
+
+       Offset / Page (`type: "offset"` or `"page"`)
+              Uses numerical offset/limit or page/size parameters.
+              Detection: Calculates the next offset or page number based on the `limit` and the number of results received so far or the `strategy`.
+              Next Request: Modifies the request's query string (`param_location: "query"`) or JSON body (`param_location: "body"`) by adding/updating the configured offset/limit or page/size parameters (`offset_param`, `limit_param`, `page_param`, `size_param`).
+              Stopping: Stops when a page returns fewer items than the `limit` (and total is unknown), when the number of collected items reaches the `total` specified by `total_field` or `total_header`, when an empty page is received (after the first page), or when `max_pages` is reached.
+
+       Cursor (`type: "cursor"`)
+              Uses an opaque cursor value provided in the response to request the next page.
+              Detection: Extracts the next cursor value from the response body (using `next_field` JQ path) or response header (using `next_header`).
+              Next Request: Depending on `cursor_usage_mode`:
+                     query: Adds the cursor value as a query parameter (`cursor_param`).
+                     body: Adds the cursor value to the JSON request body (`cursor_param` at `body_path`).
+                     url: Uses the cursor value as the complete URL for the next request (forcing GET method).
+              Stopping: Stops when no next cursor value is found (field/header missing, null, or empty) or when `max_pages` is reached.
+
+       Link Header (`type: "link_header"`)
+              Uses the `Link` HTTP header (RFC 5988).
+              Detection: Parses the `Link` response header(s) looking for a link with `rel="next"`.
+              Next Request: Uses the URL found in the `rel="next"` link for the subsequent request (forcing GET method). Handles relative URLs correctly.
+              Stopping: Stops when no `rel="next"` link is found in the response headers or when `max_pages` is reached.
+
+EXTRACTION
+       Values can be extracted from responses in `chain` mode using the `extract` map within a step.
+
+       Header Extraction
+              Syntax: `VariableName: "header:HEADER_NAME:(REGEX)"`
+              `HEADER_NAME`: The case-insensitive name of the HTTP response header.
+              `REGEX`: A Go compatible regular expression containing at least one capturing group `(...)`.
+              Result: The content of the first capturing group is assigned to `VariableName`. An error occurs if the header is not found or the regex doesn't match/capture.
+
+       Body Extraction (JQ)
+              Syntax: `VariableName: "JQ_FILTER"` (Any string not starting with `header:`)
+              `JQ_FILTER`: A valid JQ filter expression.
+              Result: The raw string output of the `jq` command (when run with the `-r` flag) is assigned to `VariableName`. Requires `jq` executable in PATH. Cannot be used in `request` steps that also use `download_to`.
+
+       Filter Step Extraction
+              Syntax 1: `VariableName: "{{result}}"`
+                     Result: Assigns the entire raw output of the preceding `filter` step's JQ command to `VariableName`.
+              Syntax 2: `VariableName: "GO_TEMPLATE_STRING"`
+                     Result: Renders the `GO_TEMPLATE_STRING`. The JQ output is available as `{{.result}}`, and all other chain variables are also accessible (e.g., `{{.SOME_OTHER_VAR}}`).
+
+TEMPLATING AND VARIABLES
+       api-tool uses Go's `text/template` engine and environment variable expansion to make configurations dynamic.
+
+       Go Templating (`{{.VarName}}`)
+              Applies to: URL paths (in chain steps, combined with `base_url`), header values, `data` payloads, `upload_body_from` paths, `form_data` values, `file_fields` paths, `download_to` paths, `filter.input`, `filter.jq`, and `output.file`.
+              Context: In chain mode, the data available is the current state map, containing initial `chain.variables` and any variables added via `extract` in previous steps. Access variables using `{{.VariableName}}`.
+              Error Handling: Referencing a non-existent variable in a template will cause the step to fail (due to `missingkey=error` option).
+
+       Environment Variable Expansion
+              Applies to: All string values read from the YAML configuration *before* template rendering.
+              Syntax: Supports Unix-style `$VAR` and `${VAR}`, and Windows-style `%VAR%`.
+              Behavior: Variables are replaced with their values from the environment. Undefined variables are replaced with an empty string.
+
+       Chain State
+              In `chain` mode, a state map holds variables. It's initialized with `chain.variables` and system environment variables. The `extract` map in each step updates this state. Subsequent steps can access these updated values via templates.
+
+FILE HANDLING
+       api-tool supports uploading and downloading files in `chain` mode.
+
+       Raw File Upload (`upload_body_from`)
+              Specify the local file path in `request.upload_body_from`. The entire content of this file becomes the request body.
+              Typically used with PUT or POST methods.
+              Sets `Content-Type: application/octet-stream` by default if not specified in `headers`.
+              Path supports templating and environment variables.
+
+       Multipart Form Upload (`form_data` / `file_fields`)
+              Used for `multipart/form-data` requests, typically with POST.
+              `request.form_data`: Defines regular key-value text fields. Values support templating/env vars.
+              `request.file_fields`: Defines file uploads. Keys are form field names, values are local file paths. Paths support templating/env vars.
+              The tool constructs the multipart body and sets the appropriate `Content-Type` header with the boundary.
+
+       File Download (`download_to`)
+              Specify the local file path in `request.download_to`. The raw response body is saved directly to this file.
+              Typically used with GET requests.
+              Path supports templating and environment variables. Directories are created if needed.
+              Using `download_to` prevents extracting data from the response *body* using JQ filters within the same step's `extract` section. Header extraction is still permitted.
+
+FIPS MODE
+       When `fips_mode: true` is set in the configuration, the tool attempts to operate in a FIPS 140-2 compliant manner where applicable.
+
+       Digest Authentication
+              MD5 and MD5-sess algorithms are disallowed. If the server only offers MD5-based Digest challenges, authentication will fail with an error. SHA-256 and SHA-256-sess are preferred.
+
+       Other Areas
+              Currently, FIPS mode primarily impacts Digest authentication. TLS cipher suite restrictions are typically handled by the underlying Go crypto library (often linked with OpenSSL) based on system-wide FIPS policies or build flags, not directly controlled by this flag within `api-tool`. A log message indicates FIPS mode is enabled.
+
+EXAMPLES / PLAYBOOKS
+
+   Playbook 1: Fetch Paginated List of Users
+       Goal: Retrieve all users from an API endpoint that uses offset/limit pagination.
+       Command:
+           api-tool -api users -endpoint list_users -loglevel info
+       Configuration (`config.yaml`):
+           retry: { max_attempts: 2, backoff_seconds: 1 }
+           auth: { default: "bearer" } # Assumes API_TOKEN env var is set
+           logging: { level: "info" }
+           apis:
+             users:
+               base_url: "https://api.user-service.com"
+               auth_type: "bearer"
+               endpoints:
+                 list_users:
+                   path: "/v1/users"
+                   method: "GET"
+                   pagination:
+                     type: "offset"
+                     results_field: "users" # Path to user array in response
+                     limit: 100           # Request 100 users per page
+                     offset_param: "start" # API uses 'start' for offset
+                     limit_param: "count"  # API uses 'count' for limit
+                     total_field: "totalAvailable" # API provides total count
+       Explanation:
+           This runs in single request mode. `api-tool` makes an initial request to `/v1/users?start=0&count=100`. It extracts the `users` array and the `totalAvailable` count. Based on the `limit` and `totalAvailable`, it automatically makes subsequent requests (e.g., `/v1/users?start=100&count=100`, `/v1/users?start=200&count=100`, etc.) until all users are fetched. The final, combined list of users (as a JSON array string) is printed to standard output.
+
+   Playbook 2: Create Resource and Extract ID (Chain)
+       Goal: POST data to create a new resource, then extract the ID of the newly created resource from the response body.
+       Command:
+           api-tool -config create.yaml -chain
+       Configuration (`create.yaml`):
+           retry: { max_attempts: 1 }
+           auth:
+             default: "basic"
+             credentials: { username: "$API_USER", password: "$API_PASS" }
+           logging: { level: "debug" }
+           apis:
+             inventory:
+               base_url: "http://inventory.internal/api"
+               auth_type: "basic"
+               endpoints:
+                 create_widget:
+                   path: "/widgets"
+                   method: "POST"
+           chain:
+             variables:
+               WIDGET_NAME: "SuperWidget"
+               WIDGET_COLOR: "blue"
+             steps:
+               - name: create_the_widget
+                 request:
+                   api: "inventory"
+                   endpoint: "create_widget"
+                   # Method POST is inherited from endpoint config
+                   headers:
+                     Content-Type: "application/json"
+                   # Use templating in the data payload
+                   data: |
+                     {
+                       "name": "{{.WIDGET_NAME}}-{{.HOSTNAME}}",
+                       "color": "{{.WIDGET_COLOR}}",
+                       "timestamp": "{{now | unixEpoch}}" # Example using hypothetical template func
+                     }
+                 extract:
+                   NEW_WIDGET_ID: ".id" # Extract 'id' field from response JSON
+                   RESPONSE_CODE: "header:Status-Code:(.*)" # Not a real header, example only
+             output:
+               file: "new_widget_id.txt"
+               var: "NEW_WIDGET_ID"
+       Explanation:
+           This uses chain mode. The `create_the_widget` step constructs a JSON payload using initial `variables` (and potentially system environment variables like HOSTNAME if available to Go's template engine or pre-set). It POSTs this data. After receiving a successful response (e.g., 201 Created), it uses the JQ filter `.id` to extract the ID from the response body (assuming format `{"id": "xyz", ...}`) and saves it to the `NEW_WIDGET_ID` chain variable. Finally, the `output` section writes the value of `NEW_WIDGET_ID` to `new_widget_id.txt`.
+
+   Playbook 3: Multipart File Upload (Chain)
+       Goal: Upload a generated report file along with metadata as a multipart/form-data request.
+       Command:
+           # Assume REPORT_PATH env var is set externally, e.g., /reports/daily_sales.csv
+           export REPORT_PATH="/reports/daily_sales.csv"
+           api-tool -config upload.yaml -chain
+       Configuration (`upload.yaml`):
+           retry: { max_attempts: 3, backoff_seconds: 5 }
+           auth: { default: "api_key", credentials: { api_key: "%REPORTS_API_KEY%" } }
+           logging: { level: "info" }
+           apis:
+             reporting:
+               base_url: "https://reports.example.com"
+               auth_type: "api_key" # Auth handled by client
+               endpoints:
+                 upload:
+                   path: "/upload/sales"
+                   method: "POST"
+           chain:
+             variables:
+               REPORT_DATE: "2025-03-31" # Could be dynamic
+               UPLOAD_USER: "%USERNAME%"
+             steps:
+               - name: upload_sales_report
+                 request:
+                   api: "reporting"
+                   endpoint: "upload"
+                   # Method POST inherited
+                   form_data: # Regular form fields
+                     reportDate: "{{.REPORT_DATE}}"
+                     uploadedBy: "{{.UPLOAD_USER}}"
+                     comments: "Daily sales data"
+                   file_fields: # Files to include
+                     # Form field name -> Local file path
+                     salesData: "$REPORT_PATH" # Use environment variable for path
+                     meta: "/config/upload_metadata.json" # Another static file
+                 # No extract needed, just check logs/server for success
+       Explanation:
+           The chain defines one step `upload_sales_report`. The `request` uses `form_data` to specify standard key-value fields (supporting templates/env vars) and `file_fields` to specify files. `api-tool` reads the content of the files specified in `file_fields` (expanding `$REPORT_PATH` from the environment) and constructs a `multipart/form-data` request body, including the `form_data` fields. It sends this POST request to the `/upload/sales` endpoint.
+
+   Playbook 4: Download Binary File (Chain)
+       Goal: Download a firmware image from an API endpoint.
+       Command:
+           api-tool -config download_fw.yaml -chain
+       Configuration (`download_fw.yaml`):
+           retry: { max_attempts: 2, backoff_seconds: 10 }
+           auth: { default: "none" }
+           logging: { level: "info" }
+           apis:
+             device_firmware:
+               base_url: "https://firmware.devices.com"
+               endpoints:
+                 get_latest:
+                   path: "/firmware/model-xyz/latest"
+                   method: "GET"
+           chain:
+             variables:
+               MODEL: "model-xyz"
+               DOWNLOAD_DIR: "/opt/firmware_updates"
+             steps:
+               - name: download_firmware
+                 request:
+                   api: "device_firmware"
+                   endpoint: "get_latest" # GET method inherited
+                   headers:
+                     Accept: "application/octet-stream"
+                   # Save the response body directly to a file
+                   download_to: "{{.DOWNLOAD_DIR}}/{{.MODEL}}_latest.bin"
+                 extract:
+                   # Can still extract headers while downloading
+                   FW_VERSION: "header:X-Firmware-Version:(.*)"
+                   FW_ETAG: "header:ETag:(.*)"
+             output: # Example: Write ETag to a separate file
+               file: "{{.DOWNLOAD_DIR}}/{{.MODEL}}_latest.etag"
+               var: "FW_ETAG"
+       Explanation:
+           The `download_firmware` step makes a GET request. The `download_to` field instructs `api-tool` to save the entire response body to the specified path (which uses templates). Even though the body is saved, the `extract` section can still pull values from response headers (`X-Firmware-Version`, `ETag`). The final `output` step saves the extracted ETag to a file.
+
+   Playbook 5: Complex Chain - Get ID, Fetch Details, Filter, Post Update
+       Goal: Find the ID of the latest 'pending' task, fetch its details, extract a specific field using JQ, and then POST an update to mark it 'processing'.
+       Command:
+           api-tool -config process_task.yaml -chain -loglevel debug
+       Configuration (`process_task.yaml`):
+           retry: { max_attempts: 3, backoff_seconds: 2 }
+           auth: { default: "bearer" } # Use API_TOKEN env var
+           logging: { level: "debug" }
+           apis:
+             task_api:
+               base_url: "https://tasks.internal.co/api"
+               auth_type: "bearer"
+               endpoints:
+                 find_pending:
+                   path: "/tasks?status=pending&limit=1&sort=created:desc"
+                   method: "GET"
+                   pagination: { type: "none" } # Ensure no pagination if API doesn't support it well here
+                 get_task:
+                   path: "/tasks" # Base path, will append ID
+                   method: "GET"
+                 update_task:
+                   path: "/tasks" # Base path, will append ID
+                   method: "PATCH" # Use PATCH for partial update
+
+           chain:
+             variables: {}
+             steps:
+               # Step 1: Find the latest pending task ID
+               - name: find_latest_pending
+                 request:
+                   api: "task_api"
+                   endpoint: "find_pending"
+                 extract:
+                   PENDING_TASK_ID: ".[0].id" # Assumes response is array: [{"id": "...", ...}]
+                   TASK_COUNT: ". | length" # Get number of pending tasks found
+
+               # Step 2: Fetch full details for that task
+               - name: get_task_details
+                 request:
+                   api: "task_api"
+                   endpoint: "get_task" # Path gets dynamically constructed below
+                   # Dynamically set path using extracted ID
+                   path_override_template: "/tasks/{{.PENDING_TASK_ID}}" # Hypothetical feature - requires manual URL construction in current code
+                   method: "GET"
+                 extract:
+                   TASK_DETAILS_JSON: "." # Get the full task JSON
+
+               # Step 3: Use JQ to extract a specific field needed for update logic (example)
+               - name: filter_task_data
+                 filter:
+                   input: "{{.TASK_DETAILS_JSON}}"
+                   jq: ".priority" # Extract priority field
+                 extract:
+                   TASK_PRIORITY: "{{result}}" # Assign JQ output to variable
+
+               # Step 4: Update the task status to 'processing'
+               - name: mark_task_processing
+                 request:
+                   api: "task_api"
+                   endpoint: "update_task" # Path gets dynamically constructed below
+                   path_override_template: "/tasks/{{.PENDING_TASK_ID}}" # Hypothetical feature - requires manual URL construction
+                   method: "PATCH"
+                   headers:
+                     Content-Type: "application/merge-patch+json" # Example specific content type
+                   data: | # Send only the fields to update
+                     {
+                       "status": "processing",
+                       "processedBy": "api-tool-{{.HOSTNAME}}",
+                       "priorityEcho": {{.TASK_PRIORITY}} # Use extracted priority
+                     }
+                 # No extraction needed, check logs or subsequent requests
+       Explanation:
+           This chain demonstrates multiple steps and data passing:
+           1. Fetches the latest pending task and extracts its ID (`PENDING_TASK_ID`).
+           2. Uses the extracted ID in a template (`path_override_template` - note: this specific field isn't implemented, requires templating the endpoint `path` itself) to construct the URL for fetching full task details. Stores the full JSON response in `TASK_DETAILS_JSON`.
+           3. Uses a local `filter` step with `jq` to extract the `.priority` field from the stored `TASK_DETAILS_JSON` into `TASK_PRIORITY`.
+           4. Uses the `PENDING_TASK_ID` and `TASK_PRIORITY` in another request template (`path_override_template` and `data`) to send a PATCH request, updating the task's status.
+
+ENVIRONMENT
+       API_TOKEN
+              Used by the `bearer` authentication type if `auth.credentials.bearer_token` is not provided or empty. Contains the Bearer token value.
+
+       Other Environment Variables
+              Standard system environment variables (like `HOSTNAME`, `USER`, `PATH`, etc., as well as custom-set variables) can be expanded within configuration string values using `$VAR`, `${VAR}`, or `%VAR%` syntax.
+
+FILES
+       config.yaml
+              The default configuration file loaded if -config is not specified.
+
+       ~/.config/api-tool/config.yaml
+              (Not implemented currently, but a potential future location for user-specific defaults).
+
+EXIT STATUS
+       0      Successful execution.
+       1      Execution failed due to configuration errors, network errors, API errors that exhausted retries, processing errors, or other issues. Check logs for details.
+
+SEE ALSO
+       jq(1), curl(1)
+
+BUGS
+       Report bugs to <YOUR_BUG_REPORTING_URL_OR_EMAIL>.
+
+AUTHOR
+       Brian Moore
+
+COPYRIGHT
+       Copyright (c) 2025 Brian Moore. Licensed under the MIT License. See the LICENSE file for details.

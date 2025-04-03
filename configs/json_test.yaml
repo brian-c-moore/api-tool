@@ -22,3 +22,4 @@ apis:
           param: "_page"  # Parameter for page-based pagination
           limit_param: "_limit"  # Defines the number of items per page
           limit: 10  # Fetch 10 items per page
+
