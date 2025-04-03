@@ -1,0 +1,1029 @@
+?   	api-tool/cmd/api-tool	[no test files]
+=== RUN   TestAppRunner_Run_Help
+=== RUN   TestAppRunner_Run_Help/Help_Flag_Long
+=== RUN   TestAppRunner_Run_Help/Help_Flag_Short
+=== RUN   TestAppRunner_Run_Help/No_Args
+--- PASS: TestAppRunner_Run_Help (0.00s)
+    --- PASS: TestAppRunner_Run_Help/Help_Flag_Long (0.00s)
+    --- PASS: TestAppRunner_Run_Help/Help_Flag_Short (0.00s)
+    --- PASS: TestAppRunner_Run_Help/No_Args (0.00s)
+=== RUN   TestAppRunner_Run_FlagErrors
+=== RUN   TestAppRunner_Run_FlagErrors/Invalid_Flag
+=== RUN   TestAppRunner_Run_FlagErrors/Flag_Needs_Argument
+--- PASS: TestAppRunner_Run_FlagErrors (0.00s)
+    --- PASS: TestAppRunner_Run_FlagErrors/Invalid_Flag (0.00s)
+    --- PASS: TestAppRunner_Run_FlagErrors/Flag_Needs_Argument (0.00s)
+=== RUN   TestAppRunner_Run_ConfigErrors
+=== RUN   TestAppRunner_Run_ConfigErrors/Config_Not_Found
+2025/04/03 07:02:49.209251 [ERROR] Configuration file 'nonexistent.yaml' not found.
+=== RUN   TestAppRunner_Run_ConfigErrors/Config_Load_Error
+2025/04/03 07:02:49.209850 [ERROR] Error loading configuration '/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestAppRunner_Run_ConfigErrorsConfig_Load_Error3472447744/001/test_config.yaml': mock yaml parse error
+--- PASS: TestAppRunner_Run_ConfigErrors (0.00s)
+    --- PASS: TestAppRunner_Run_ConfigErrors/Config_Not_Found (0.00s)
+    --- PASS: TestAppRunner_Run_ConfigErrors/Config_Load_Error (0.00s)
+=== RUN   TestAppRunner_Run_ModeDispatch
+=== RUN   TestAppRunner_Run_ModeDispatch/Single_Mode_-_Missing_API
+2025/04/03 07:02:49.210238 [ERROR] Error: -api and -endpoint are required in single request mode.
+=== RUN   TestAppRunner_Run_ModeDispatch/Single_Mode_-_Missing_Endpoint
+2025/04/03 07:02:49.210267 [ERROR] Error: -api and -endpoint are required in single request mode.
+=== RUN   TestAppRunner_Run_ModeDispatch/Single_Mode_-_Execution_Fails_(DNS)
+<!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+<title>Attention Required! | Cloudflare</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/cf.errors.css" />
+<!--[if lt IE 9]><link rel="stylesheet" id='cf_styles-ie-css' href="/cdn-cgi/styles/cf.errors.ie.css" /><![endif]-->
+<style>body{margin:0;padding:0}</style>
+
+
+<!--[if gte IE 10]><!-->
+<script>
+  if (!navigator.cookieEnabled) {
+    window.addEventListener('DOMContentLoaded', function () {
+      var cookieEl = document.getElementById('cookie-alert');
+      cookieEl.style.display = 'block';
+    })
+  }
+</script>
+<!--<![endif]-->
+
+
+</head>
+<body>
+  <div id="cf-wrapper">
+    <div class="cf-alert cf-alert-error cf-cookie-error" id="cookie-alert" data-translate="enable_cookies">Please enable cookies.</div>
+    <div id="cf-error-details" class="cf-error-details-wrapper">
+      <div class="cf-wrapper cf-header cf-error-overview">
+        <h1 data-translate="block_headline">Sorry, you have been blocked</h1>
+        <h2 class="cf-subheadline"><span data-translate="unable_to_access">You are unable to access</span> squadhelp.com</h2>
+      </div><!-- /.header -->
+
+      <div class="cf-section cf-highlight">
+        <div class="cf-wrapper">
+          <div class="cf-screenshot-container cf-screenshot-full">
+            
+              <span class="cf-no-screenshot error"></span>
+            
+          </div>
+        </div>
+      </div><!-- /.captcha-container -->
+
+      <div class="cf-section cf-wrapper">
+        <div class="cf-columns two">
+          <div class="cf-column">
+            <h2 data-translate="blocked_why_headline">Why have I been blocked?</h2>
+
+            <p data-translate="blocked_why_detail">This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.</p>
+          </div>
+
+          <div class="cf-column">
+            <h2 data-translate="blocked_resolve_headline">What can I do to resolve this?</h2>
+
+            <p data-translate="blocked_resolve_detail">You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the Cloudflare Ray ID found at the bottom of this page.</p>
+          </div>
+        </div>
+      </div><!-- /.section -->
+
+      <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">92a86bcb0bb8e54e</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">2600:1702:50c1:5700:c98f:b4f3:efc6:a04f</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div><!-- /#cf-error-details -->
+  </div><!-- /#cf-wrapper -->
+
+  <script>
+  window._cf_translation = {};
+  
+  
+</script>
+
+</body>
+</html>
+
+    app_test.go:273: 
+        	Error Trace:	/Users/moosifer/Documents/GitHub/api-tool/internal/app/app_test.go:273
+        	Error:      	An error is expected but got nil.
+        	Test:       	TestAppRunner_Run_ModeDispatch/Single_Mode_-_Execution_Fails_(DNS)
+        	Messages:   	Expected an error containing 'dial tcp: lookup test.com'
+=== RUN   TestAppRunner_Run_ModeDispatch/Chain_Mode_-_Success_Path
+=== RUN   TestAppRunner_Run_ModeDispatch/Chain_Mode_-_Runner_Fails
+2025/04/03 07:03:08.591193 [ERROR] Chain execution failed: chain failed
+=== RUN   TestAppRunner_Run_ModeDispatch/Chain_Mode_-_Config_Missing_Chain_Section
+--- FAIL: TestAppRunner_Run_ModeDispatch (19.38s)
+    --- PASS: TestAppRunner_Run_ModeDispatch/Single_Mode_-_Missing_API (0.00s)
+    --- PASS: TestAppRunner_Run_ModeDispatch/Single_Mode_-_Missing_Endpoint (0.00s)
+    --- FAIL: TestAppRunner_Run_ModeDispatch/Single_Mode_-_Execution_Fails_(DNS) (19.38s)
+    --- PASS: TestAppRunner_Run_ModeDispatch/Chain_Mode_-_Success_Path (0.00s)
+    --- PASS: TestAppRunner_Run_ModeDispatch/Chain_Mode_-_Runner_Fails (0.00s)
+    --- PASS: TestAppRunner_Run_ModeDispatch/Chain_Mode_-_Config_Missing_Chain_Section (0.00s)
+FAIL
+FAIL	api-tool/internal/app	19.592s
+=== RUN   TestApplyAuthHeaders
+=== RUN   TestApplyAuthHeaders/None
+=== RUN   TestApplyAuthHeaders/API_Key
+=== RUN   TestApplyAuthHeaders/API_Key_Env_Expand
+=== RUN   TestApplyAuthHeaders/API_Key_Missing_Cred
+=== RUN   TestApplyAuthHeaders/Bearer_From_Arg
+=== RUN   TestApplyAuthHeaders/Bearer_Missing_Token
+=== RUN   TestApplyAuthHeaders/Basic
+=== RUN   TestApplyAuthHeaders/Basic_Env_Expand
+=== RUN   TestApplyAuthHeaders/Basic_Missing_User
+=== RUN   TestApplyAuthHeaders/Basic_Missing_Pass
+=== RUN   TestApplyAuthHeaders/NTLM_(Sets_Basic)
+=== RUN   TestApplyAuthHeaders/NTLM_Missing_Creds
+=== RUN   TestApplyAuthHeaders/Digest_(No_Headers_Applied)
+=== RUN   TestApplyAuthHeaders/OAuth2_(No_Headers_Applied)
+=== RUN   TestApplyAuthHeaders/Unsupported_Type
+--- PASS: TestApplyAuthHeaders (0.00s)
+    --- PASS: TestApplyAuthHeaders/None (0.00s)
+    --- PASS: TestApplyAuthHeaders/API_Key (0.00s)
+    --- PASS: TestApplyAuthHeaders/API_Key_Env_Expand (0.00s)
+    --- PASS: TestApplyAuthHeaders/API_Key_Missing_Cred (0.00s)
+    --- PASS: TestApplyAuthHeaders/Bearer_From_Arg (0.00s)
+    --- PASS: TestApplyAuthHeaders/Bearer_Missing_Token (0.00s)
+    --- PASS: TestApplyAuthHeaders/Basic (0.00s)
+    --- PASS: TestApplyAuthHeaders/Basic_Env_Expand (0.00s)
+    --- PASS: TestApplyAuthHeaders/Basic_Missing_User (0.00s)
+    --- PASS: TestApplyAuthHeaders/Basic_Missing_Pass (0.00s)
+    --- PASS: TestApplyAuthHeaders/NTLM_(Sets_Basic) (0.00s)
+    --- PASS: TestApplyAuthHeaders/NTLM_Missing_Creds (0.00s)
+    --- PASS: TestApplyAuthHeaders/Digest_(No_Headers_Applied) (0.00s)
+    --- PASS: TestApplyAuthHeaders/OAuth2_(No_Headers_Applied) (0.00s)
+    --- PASS: TestApplyAuthHeaders/Unsupported_Type (0.00s)
+=== RUN   TestGetAPIToken
+=== RUN   TestGetAPIToken/Token_Set
+=== RUN   TestGetAPIToken/Token_Not_Set
+--- PASS: TestGetAPIToken (0.00s)
+    --- PASS: TestGetAPIToken/Token_Set (0.00s)
+    --- PASS: TestGetAPIToken/Token_Not_Set (0.00s)
+=== RUN   TestNeedsCredentials
+=== RUN   TestNeedsCredentials/none
+=== RUN   TestNeedsCredentials/api_key
+=== RUN   TestNeedsCredentials/bearer
+=== RUN   TestNeedsCredentials/basic
+=== RUN   TestNeedsCredentials/ntlm
+=== RUN   TestNeedsCredentials/digest
+=== RUN   TestNeedsCredentials/oauth2
+=== RUN   TestNeedsCredentials/unknown
+--- PASS: TestNeedsCredentials (0.00s)
+    --- PASS: TestNeedsCredentials/none (0.00s)
+    --- PASS: TestNeedsCredentials/api_key (0.00s)
+    --- PASS: TestNeedsCredentials/bearer (0.00s)
+    --- PASS: TestNeedsCredentials/basic (0.00s)
+    --- PASS: TestNeedsCredentials/ntlm (0.00s)
+    --- PASS: TestNeedsCredentials/digest (0.00s)
+    --- PASS: TestNeedsCredentials/oauth2 (0.00s)
+    --- PASS: TestNeedsCredentials/unknown (0.00s)
+=== RUN   TestDigestAuthRoundTripper_Success_MD5
+2025/04/03 07:02:49.353851 [INFO]  Digest RT: Selected Algorithm: MD5, QOP: auth (FIPS Mode: false)
+--- PASS: TestDigestAuthRoundTripper_Success_MD5 (0.00s)
+=== RUN   TestDigestAuthRoundTripper_Success_SHA256_Preferred
+2025/04/03 07:02:49.354124 [INFO]  Digest RT: Selected Algorithm: SHA-256, QOP: auth-int (FIPS Mode: false)
+--- PASS: TestDigestAuthRoundTripper_Success_SHA256_Preferred (0.00s)
+=== RUN   TestDigestAuthRoundTripper_FIPS_Mode_Fail_MD5_Only
+--- PASS: TestDigestAuthRoundTripper_FIPS_Mode_Fail_MD5_Only (0.00s)
+=== RUN   TestDigestAuthRoundTripper_FIPS_Mode_Success_SHA256_Offered
+2025/04/03 07:02:49.354214 [INFO]  Digest RT: Selected Algorithm: SHA-256, QOP: auth (FIPS Mode: true)
+--- PASS: TestDigestAuthRoundTripper_FIPS_Mode_Success_SHA256_Offered (0.00s)
+=== RUN   TestDigestAuthRoundTripper_Fail_No_Supported_Algo
+--- PASS: TestDigestAuthRoundTripper_Fail_No_Supported_Algo (0.00s)
+=== RUN   TestDigestAuthRoundTripper_AuthInt_With_Body
+2025/04/03 07:02:49.354297 [INFO]  Digest RT: Selected Algorithm: MD5, QOP: auth-int (FIPS Mode: false)
+--- PASS: TestDigestAuthRoundTripper_AuthInt_With_Body (0.00s)
+=== RUN   TestDigestAuthRoundTripper_Non401
+--- PASS: TestDigestAuthRoundTripper_Non401 (0.00s)
+=== RUN   TestDigestAuthRoundTripper_401NotDigest
+--- PASS: TestDigestAuthRoundTripper_401NotDigest (0.00s)
+=== RUN   TestDigestAuthRoundTripper_ErrorOnFirstRequest
+--- PASS: TestDigestAuthRoundTripper_ErrorOnFirstRequest (0.00s)
+=== RUN   TestDigestAuthRoundTripper_ErrorOnSecondRequest
+2025/04/03 07:02:49.354412 [INFO]  Digest RT: Selected Algorithm: MD5, QOP: auth (FIPS Mode: false)
+--- PASS: TestDigestAuthRoundTripper_ErrorOnSecondRequest (0.00s)
+PASS
+ok  	api-tool/internal/auth	0.354s
+=== RUN   TestRunner_Run_SimpleRequestStep_NoRegression
+2025/04/03 07:02:49.522713 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.522975 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.522979 [INFO]  Executing Step: fetch_data
+2025/04/03 07:02:49.523022 [DEBUG] Step 'fetch_data': Auto-detected Content-Type: application/json
+2025/04/03 07:02:49.523182 [DEBUG] Step 'fetch_data': Sending GET http://api.test/data
+2025/04/03 07:02:49.523255 [INFO]  Step 'fetch_data': Extracted Variable 'RESULT_BODY' = '{"id": 123}' (from Body JQ)
+2025/04/03 07:02:49.523258 [INFO]  Chain execution completed.
+--- PASS: TestRunner_Run_SimpleRequestStep_NoRegression (0.00s)
+=== RUN   TestRunner_Run_FileHandlingSteps
+=== RUN   TestRunner_Run_FileHandlingSteps/Raw_File_Upload_Success
+2025/04/03 07:02:49.523442 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.523512 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.523514 [INFO]  Executing Step: raw_upload
+2025/04/03 07:02:49.523531 [DEBUG] Step 'raw_upload': Uploading body from file: /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/upload.bin
+2025/04/03 07:02:49.523577 [DEBUG] Step 'raw_upload': Sending PUT http://file.test/upload
+2025/04/03 07:02:49.523622 [INFO]  Chain execution completed.
+=== RUN   TestRunner_Run_FileHandlingSteps/Raw_File_Upload_File_Not_Found
+2025/04/03 07:02:49.523650 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.523671 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.523673 [INFO]  Executing Step: raw_upload_fail
+2025/04/03 07:02:49.523684 [DEBUG] Step 'raw_upload_fail': Uploading body from file: nonexistent.file
+=== RUN   TestRunner_Run_FileHandlingSteps/Multipart_Upload_Success
+2025/04/03 07:02:49.523719 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.523762 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.523764 [INFO]  Executing Step: multipart_upload
+2025/04/03 07:02:49.523772 [DEBUG] Step 'multipart_upload': Preparing multipart form data
+2025/04/03 07:02:49.523838 [DEBUG] Step 'multipart_upload': Added multipart file 'data.txt' from path '/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/data.txt' as field 'file1'
+2025/04/03 07:02:49.523856 [DEBUG] Step 'multipart_upload': Added multipart file 'upload.bin' from path '/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/upload.bin' as field 'meta'
+2025/04/03 07:02:49.523878 [DEBUG] Step 'multipart_upload': Sending POST http://file.test/upload
+2025/04/03 07:02:49.523900 [INFO]  Chain execution completed.
+=== RUN   TestRunner_Run_FileHandlingSteps/Download_Success
+2025/04/03 07:02:49.523950 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.523978 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.523981 [INFO]  Executing Step: download_ok
+2025/04/03 07:02:49.524007 [DEBUG] Step 'download_ok': Sending GET http://file.test/upload
+2025/04/03 07:02:49.524051 [INFO]  Step 'download_ok': Downloading (Status 200) to: /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/downloaded_response.zip
+2025/04/03 07:02:49.524065 [INFO]  Step 'download_ok': Downloaded 30 bytes to /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/downloaded_response.zip
+2025/04/03 07:02:49.524067 [INFO]  Chain execution completed.
+=== RUN   TestRunner_Run_FileHandlingSteps/Download_Success_with_Templated_Path
+2025/04/03 07:02:49.524097 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.524124 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.524126 [INFO]  Executing Step: download_template
+2025/04/03 07:02:49.524149 [DEBUG] Step 'download_template': Sending GET http://file.test/upload
+2025/04/03 07:02:49.524174 [INFO]  Step 'download_template': Downloading (Status 200) to: /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/download_step1.out
+2025/04/03 07:02:49.524185 [INFO]  Step 'download_template': Downloaded 30 bytes to /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/download_step1.out
+2025/04/03 07:02:49.524188 [INFO]  Chain execution completed.
+=== RUN   TestRunner_Run_FileHandlingSteps/Download_Success_with_Env_Var_Path
+2025/04/03 07:02:49.524217 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.524242 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.524245 [INFO]  Executing Step: download_env
+2025/04/03 07:02:49.524268 [DEBUG] Step 'download_env': Sending GET http://file.test/upload
+2025/04/03 07:02:49.524288 [INFO]  Step 'download_env': Downloading (Status 200) to: /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/results/file.out
+2025/04/03 07:02:49.524302 [INFO]  Step 'download_env': Downloaded 30 bytes to /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/results/file.out
+2025/04/03 07:02:49.524304 [INFO]  Chain execution completed.
+=== RUN   TestRunner_Run_FileHandlingSteps/Download_Fails_During_Write_(WriteFile_Error)
+2025/04/03 07:02:49.524332 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.524362 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.524363 [INFO]  Executing Step: download_fail_write
+2025/04/03 07:02:49.524385 [DEBUG] Step 'download_fail_write': Sending GET http://file.test/upload
+2025/04/03 07:02:49.524404 [INFO]  Step 'download_fail_write': Downloading (Status 200) to: /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/downloaded_response.zip
+=== RUN   TestRunner_Run_FileHandlingSteps/Download_with_Header_Extraction_Only
+2025/04/03 07:02:49.524447 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.524477 [DEBUG] Initial State: map[BASH_SILENCE_DEPRECATION_WARNING:1 COLORTERM:truecolor COMMAND_MODE:unix2003 DL_SUBDIR:results HOME:/Users/moosifer HOMEBREW_CELLAR:/opt/homebrew/Cellar HOMEBREW_PREFIX:/opt/homebrew HOMEBREW_REPOSITORY:/opt/homebrew INFOPATH:/opt/homebrew/share/info: LANG:en_US.UTF-8 LOGNAME:moosifer MallocNanoZone:0 OLDPWD:/Users/moosifer ORIGINAL_XDG_CURRENT_DESKTOP:undefined PATH:/usr/local/go/bin:/Users/moosifer/.pyenv/shims:/Users/moosifer/.pyenv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/go/bin:/Users/moosifer/.local/bin PWD:/Users/moosifer/Documents/GitHub/api-tool/internal/chain PYENV_ROOT:/Users/moosifer/.pyenv PYENV_SHELL:bash SHELL:/bin/bash SHLVL:1 SSH_AUTH_SOCK:/private/tmp/com.apple.launchd.sE2PR3vFVp/Listeners STEP_ID:step1 TERM:xterm-256color TERM_PROGRAM:Hyper TERM_PROGRAM_VERSION:3.4.1 TMPDIR:/var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/ USER:moosifer XPC_FLAGS:0x0 XPC_SERVICE_NAME:0 _:/usr/local/go/bin/go __CFBundleIdentifier:co.zeit.hyper __CF_USER_TEXT_ENCODING:0x1F5:0x0:0x0]
+2025/04/03 07:02:49.524478 [INFO]  Executing Step: download_extract_header
+2025/04/03 07:02:49.524499 [DEBUG] Step 'download_extract_header': Sending GET http://file.test/upload
+2025/04/03 07:02:49.524519 [INFO]  Step 'download_extract_header': Downloading (Status 200) to: /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/downloaded_response.zip
+2025/04/03 07:02:49.524530 [INFO]  Step 'download_extract_header': Downloaded 30 bytes to /var/folders/8y/q4hdckn15ml2zt1l9d2x9f600000gn/T/TestRunner_Run_FileHandlingSteps1081604325/001/downloaded_response.zip
+2025/04/03 07:02:49.524534 [INFO]  Step 'download_extract_header': Extracted Variable 'ETAG' = '"abc-123"' (from Header)
+2025/04/03 07:02:49.524534 [INFO]  Chain execution completed.
+--- PASS: TestRunner_Run_FileHandlingSteps (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Raw_File_Upload_Success (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Raw_File_Upload_File_Not_Found (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Multipart_Upload_Success (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Download_Success (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Download_Success_with_Templated_Path (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Download_Success_with_Env_Var_Path (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Download_Fails_During_Write_(WriteFile_Error) (0.00s)
+    --- PASS: TestRunner_Run_FileHandlingSteps/Download_with_Header_Extraction_Only (0.00s)
+=== RUN   TestState_SetGet
+--- PASS: TestState_SetGet (0.00s)
+=== RUN   TestState_GetAll
+--- PASS: TestState_GetAll (0.00s)
+=== RUN   TestState_MergeMap
+--- PASS: TestState_MergeMap (0.00s)
+=== RUN   TestState_MergeOSEnv
+--- PASS: TestState_MergeOSEnv (0.00s)
+PASS
+ok  	api-tool/internal/chain	0.491s
+=== RUN   TestLoadConfig_ValidCases
+=== RUN   TestLoadConfig_ValidCases/Minimal_Valid_Config
+=== RUN   TestLoadConfig_ValidCases/Config_with_Chain
+=== RUN   TestLoadConfig_ValidCases/Config_with_Defaults_Applied
+--- PASS: TestLoadConfig_ValidCases (0.00s)
+    --- PASS: TestLoadConfig_ValidCases/Minimal_Valid_Config (0.00s)
+    --- PASS: TestLoadConfig_ValidCases/Config_with_Chain (0.00s)
+    --- PASS: TestLoadConfig_ValidCases/Config_with_Defaults_Applied (0.00s)
+=== RUN   TestLoadConfig_ErrorCases
+=== RUN   TestLoadConfig_ErrorCases/File_Not_Found
+=== RUN   TestLoadConfig_ErrorCases/Invalid_YAML_Syntax
+=== RUN   TestLoadConfig_ErrorCases/Empty_File
+--- PASS: TestLoadConfig_ErrorCases (0.00s)
+    --- PASS: TestLoadConfig_ErrorCases/File_Not_Found (0.00s)
+    --- PASS: TestLoadConfig_ErrorCases/Invalid_YAML_Syntax (0.00s)
+    --- PASS: TestLoadConfig_ErrorCases/Empty_File (0.00s)
+=== RUN   TestLoadConfig_ValidationErrors
+=== RUN   TestLoadConfig_ValidationErrors/Missing_Required_Top-Level_Keys
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_API_Structure
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_Endpoint_Structure
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_URL
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_Log_Level
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_Chain_Step_Reference_API
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_Chain_Step_Reference_Endpoint
+=== RUN   TestLoadConfig_ValidationErrors/Invalid_Pagination_Config
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_Data_vs_Upload
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_Upload_vs_Multipart
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_Data_vs_Multipart_Files
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_All_Three
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Download_vs_Body_Extract_Conflict
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Download_with_Only_Header_Extract_(Valid)
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Upload_with_GET_(Validation_Error)
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Multipart_with_GET_(Validation_Error)
+=== RUN   TestLoadConfig_ValidationErrors/Chain_Request_Download_with_POST_(Validation_Error)
+--- PASS: TestLoadConfig_ValidationErrors (0.01s)
+    --- PASS: TestLoadConfig_ValidationErrors/Missing_Required_Top-Level_Keys (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_API_Structure (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_Endpoint_Structure (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_URL (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_Log_Level (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_Chain_Step_Reference_API (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_Chain_Step_Reference_Endpoint (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Invalid_Pagination_Config (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_Data_vs_Upload (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_Upload_vs_Multipart (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_Data_vs_Multipart_Files (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Body_Mutual_Exclusivity_-_All_Three (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Download_vs_Body_Extract_Conflict (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Download_with_Only_Header_Extract_(Valid) (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Upload_with_GET_(Validation_Error) (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Multipart_with_GET_(Validation_Error) (0.00s)
+    --- PASS: TestLoadConfig_ValidationErrors/Chain_Request_Download_with_POST_(Validation_Error) (0.00s)
+PASS
+ok  	api-tool/internal/config	0.633s
+=== RUN   TestExecuteRequest_RetryLogic
+2025/04/03 07:02:49.961192 [DEBUG] Log level set to 4
+=== RUN   TestExecuteRequest_RetryLogic/Success_First_Try
+2025/04/03 07:02:49.961483 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961665 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+=== RUN   TestExecuteRequest_RetryLogic/Retry_on_503_then_Success
+2025/04/03 07:02:49.961731 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961744 [INFO]  Attempt 1 failed: received retryable status code 503
+2025/04/03 07:02:49.961749 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.961751 [DEBUG] Request attempt 2/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961754 [DEBUG] Attempt 2 successful with status 200 or non-retryable error.
+=== RUN   TestExecuteRequest_RetryLogic/Retry_on_500_Hits_Max_Attempts
+2025/04/03 07:02:49.961780 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961790 [INFO]  Attempt 1 failed: received retryable status code 500
+2025/04/03 07:02:49.961793 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.961795 [DEBUG] Request attempt 2/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961797 [INFO]  Attempt 2 failed: received retryable status code 500
+2025/04/03 07:02:49.961799 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.961801 [DEBUG] Request attempt 3/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961804 [INFO]  Attempt 3 failed: received retryable status code 500
+=== RUN   TestExecuteRequest_RetryLogic/No_Retry_on_Excluded_Code_400
+2025/04/03 07:02:49.961830 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961839 [DEBUG] Attempt 1 successful with status 400 or non-retryable error.
+=== RUN   TestExecuteRequest_RetryLogic/No_Retry_on_Excluded_Code_404
+2025/04/03 07:02:49.961865 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961874 [DEBUG] Attempt 1 successful with status 404 or non-retryable error.
+=== RUN   TestExecuteRequest_RetryLogic/Retry_on_Network_Error_then_Success
+2025/04/03 07:02:49.961967 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.961996 [INFO]  Attempt 1 failed: Get "http://retry.test/data": connection refused
+2025/04/03 07:02:49.962000 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.962002 [DEBUG] Request attempt 2/3 for GET http://retry.test/data
+2025/04/03 07:02:49.962005 [DEBUG] Attempt 2 successful with status 200 or non-retryable error.
+=== RUN   TestExecuteRequest_RetryLogic/Retry_on_Network_Error_Hits_Max_Attempts
+2025/04/03 07:02:49.962029 [DEBUG] Request attempt 1/3 for GET http://retry.test/data
+2025/04/03 07:02:49.962040 [INFO]  Attempt 1 failed: Get "http://retry.test/data": net err 1
+2025/04/03 07:02:49.962044 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.962045 [DEBUG] Request attempt 2/3 for GET http://retry.test/data
+2025/04/03 07:02:49.962055 [INFO]  Attempt 2 failed: Get "http://retry.test/data": net err 2
+2025/04/03 07:02:49.962058 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.962060 [DEBUG] Request attempt 3/3 for GET http://retry.test/data
+2025/04/03 07:02:49.962064 [INFO]  Attempt 3 failed: Get "http://retry.test/data": net err 3
+=== RUN   TestExecuteRequest_RetryLogic/POST_Request_Body_Resent_on_Retry
+2025/04/03 07:02:49.962091 [DEBUG] Request attempt 1/3 for POST http://retry.test/data
+2025/04/03 07:02:49.962101 [INFO]  Attempt 1 failed: received retryable status code 500
+2025/04/03 07:02:49.962104 [INFO]  Retrying in 1s...
+2025/04/03 07:02:49.962106 [DEBUG] Request attempt 2/3 for POST http://retry.test/data
+2025/04/03 07:02:49.962109 [DEBUG] Attempt 2 successful with status 200 or non-retryable error.
+=== RUN   TestExecuteRequest_RetryLogic/Zero_Max_Attempts_(Effectively_1)
+2025/04/03 07:02:49.962146 [INFO]  Attempt 1 failed: received retryable status code 500
+--- PASS: TestExecuteRequest_RetryLogic (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/Success_First_Try (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/Retry_on_503_then_Success (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/Retry_on_500_Hits_Max_Attempts (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/No_Retry_on_Excluded_Code_400 (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/No_Retry_on_Excluded_Code_404 (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/Retry_on_Network_Error_then_Success (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/Retry_on_Network_Error_Hits_Max_Attempts (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/POST_Request_Body_Resent_on_Retry (0.00s)
+    --- PASS: TestExecuteRequest_RetryLogic/Zero_Max_Attempts_(Effectively_1) (0.00s)
+=== RUN   TestExtractHeaderValue
+=== RUN   TestExtractHeaderValue/Simple_Match
+=== RUN   TestExtractHeaderValue/Match_Mime_Type
+=== RUN   TestExtractHeaderValue/Match_Charset
+=== RUN   TestExtractHeaderValue/Link_Header_Next_URL
+=== RUN   TestExtractHeaderValue/Request_ID
+=== RUN   TestExtractHeaderValue/Header_Not_Found
+=== RUN   TestExtractHeaderValue/Regex_No_Match
+=== RUN   TestExtractHeaderValue/Regex_No_Capture_Group
+=== RUN   TestExtractHeaderValue/Invalid_Regex
+=== RUN   TestExtractHeaderValue/Invalid_Format_No_Regex
+=== RUN   TestExtractHeaderValue/Invalid_Format_No_Header_Name
+=== RUN   TestExtractHeaderValue/Invalid_Format_No_Header_Prefix
+=== RUN   TestExtractHeaderValue/Empty_Header_Value_Match
+=== RUN   TestExtractHeaderValue/Empty_Header_Value_No_Match
+--- PASS: TestExtractHeaderValue (0.00s)
+    --- PASS: TestExtractHeaderValue/Simple_Match (0.00s)
+    --- PASS: TestExtractHeaderValue/Match_Mime_Type (0.00s)
+    --- PASS: TestExtractHeaderValue/Match_Charset (0.00s)
+    --- PASS: TestExtractHeaderValue/Link_Header_Next_URL (0.00s)
+    --- PASS: TestExtractHeaderValue/Request_ID (0.00s)
+    --- PASS: TestExtractHeaderValue/Header_Not_Found (0.00s)
+    --- PASS: TestExtractHeaderValue/Regex_No_Match (0.00s)
+    --- PASS: TestExtractHeaderValue/Regex_No_Capture_Group (0.00s)
+    --- PASS: TestExtractHeaderValue/Invalid_Regex (0.00s)
+    --- PASS: TestExtractHeaderValue/Invalid_Format_No_Regex (0.00s)
+    --- PASS: TestExtractHeaderValue/Invalid_Format_No_Header_Name (0.00s)
+    --- PASS: TestExtractHeaderValue/Invalid_Format_No_Header_Prefix (0.00s)
+    --- PASS: TestExtractHeaderValue/Empty_Header_Value_Match (0.00s)
+    --- PASS: TestExtractHeaderValue/Empty_Header_Value_No_Match (0.00s)
+=== RUN   TestHandleOffsetOrPagePagination
+2025/04/03 07:02:49.962514 [DEBUG] Log level set to 4
+=== RUN   TestHandleOffsetOrPagePagination/Offset_Stop_By_Total
+2025/04/03 07:02:49.962564 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.962643 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.962648 [DEBUG] Pagination: Found total records 3 from body field 'total'
+2025/04/03 07:02:49.962650 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=0
+2025/04/03 07:02:49.962657 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/items?skip=2&take=2
+2025/04/03 07:02:49.962662 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.962664 [DEBUG] Pagination: Extracted 1 items on page 2 (index 1). Total so far: 3
+2025/04/03 07:02:49.962666 [INFO]  Pagination: Collected items 3 >= known total 3. Stopping.
+2025/04/03 07:02:49.962669 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleOffsetOrPagePagination/Page_Stop_By_Results_Less_Than_Limit
+2025/04/03 07:02:49.962774 [INFO]  Pagination type 'page' detected. Starting pagination handling...
+2025/04/03 07:02:49.962782 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.962784 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=2
+2025/04/03 07:02:49.962789 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/data?p=2&s=2
+2025/04/03 07:02:49.962792 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.962794 [DEBUG] Pagination: Extracted 2 items on page 2 (index 1). Total so far: 4
+2025/04/03 07:02:49.962795 [INFO]  Pagination: Preparing next page request. Next Offset=4, Next Page=3
+2025/04/03 07:02:49.962799 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/data?p=3&s=2
+2025/04/03 07:02:49.962801 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.962803 [DEBUG] Pagination: Extracted 1 items on page 3 (index 2). Total so far: 5
+2025/04/03 07:02:49.962805 [INFO]  Pagination: Received 1 items < limit 2, and total unknown. Assuming end. Stopping.
+2025/04/03 07:02:49.962807 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleOffsetOrPagePagination/Offset_in_POST_Body_Nested
+2025/04/03 07:02:49.962860 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.962867 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.962870 [DEBUG] Pagination: Found total records 3 from body field 'response.totalRecords'
+2025/04/03 07:02:49.962871 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=0
+2025/04/03 07:02:49.962908 [DEBUG] Pagination (Body): Updated body for path 'query.options': {"query":{"options":{"count":2,"startOffset":2},"tool":"details"},"type":"vuln"}
+2025/04/03 07:02:49.962914 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.962917 [DEBUG] Pagination: Extracted 1 items on page 2 (index 1). Total so far: 3
+2025/04/03 07:02:49.962918 [INFO]  Pagination: Collected items 3 >= known total 3. Stopping.
+2025/04/03 07:02:49.962920 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleOffsetOrPagePagination/Offset_Error_on_Page_2
+2025/04/03 07:02:49.962978 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.962986 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.962989 [DEBUG] Pagination: Found total records 4 from body field 'total'
+2025/04/03 07:02:49.962990 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=0
+2025/04/03 07:02:49.962996 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/items?limit=2&offset=2
+2025/04/03 07:02:49.963005 [INFO]  Attempt 1 failed: Get "http://test.com/items?limit=2&offset=2": network timeout
+2025/04/03 07:02:49.963010 [ERROR] Pagination: Failed to fetch page (offset 2 / page 0): request failed after 1 attempts: request failed: Get "http://test.com/items?limit=2&offset=2": network timeout. Stopping.
+2025/04/03 07:02:49.963012 [ERROR] Pagination failed: request failed after 1 attempts: request failed: Get "http://test.com/items?limit=2&offset=2": network timeout. Returning collected data if any.
+=== RUN   TestHandleOffsetOrPagePagination/Offset_Stop_By_Empty_Results
+2025/04/03 07:02:49.963054 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.963062 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.963064 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=0
+2025/04/03 07:02:49.963068 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/data?limit=5&offset=2
+2025/04/03 07:02:49.963091 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963101 [DEBUG] Pagination: Extracted 0 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963105 [INFO]  Pagination: Received 0 items < limit 5, and total unknown. Assuming end. Stopping.
+2025/04/03 07:02:49.963106 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleOffsetOrPagePagination/Offset_Stop_By_Header_Total
+2025/04/03 07:02:49.963164 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.963173 [DEBUG] Pagination: Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963175 [DEBUG] Pagination: Found total records 2 from header 'X-Total'
+2025/04/03 07:02:49.963177 [INFO]  Pagination: Preparing next page request. Next Offset=1, Next Page=0
+2025/04/03 07:02:49.963181 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/items?skip=1&take=1
+2025/04/03 07:02:49.963187 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963190 [DEBUG] Pagination: Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963192 [INFO]  Pagination: Collected items 2 >= known total 2. Stopping.
+2025/04/03 07:02:49.963194 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleOffsetOrPagePagination/Offset_Stop_By_MaxPages
+2025/04/03 07:02:49.963233 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.963241 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.963244 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=0
+2025/04/03 07:02:49.963248 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/items?limit=2&offset=2
+2025/04/03 07:02:49.963251 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963254 [DEBUG] Pagination: Extracted 2 items on page 2 (index 1). Total so far: 4
+2025/04/03 07:02:49.963256 [INFO]  Pagination: Reached configured max_pages (2). Stopping.
+2025/04/03 07:02:49.963257 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleOffsetOrPagePagination/Offset_MaxPages_Not_Hit_Due_To_Other_Stop
+2025/04/03 07:02:49.963293 [INFO]  Pagination type 'offset' detected. Starting pagination handling...
+2025/04/03 07:02:49.963300 [DEBUG] Pagination: Extracted 2 items on page 1 (index 0). Total so far: 2
+2025/04/03 07:02:49.963303 [DEBUG] Pagination: Found total records 3 from body field 'total'
+2025/04/03 07:02:49.963304 [INFO]  Pagination: Preparing next page request. Next Offset=2, Next Page=0
+2025/04/03 07:02:49.963308 [DEBUG] Pagination (Query): Constructed next URL: http://test.com/items?limit=2&offset=2
+2025/04/03 07:02:49.963311 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963315 [DEBUG] Pagination: Extracted 1 items on page 2 (index 1). Total so far: 3
+2025/04/03 07:02:49.963316 [INFO]  Pagination: Collected items 3 >= known total 3. Stopping.
+2025/04/03 07:02:49.963317 [INFO]  Pagination finished. Returning merged results.
+--- PASS: TestHandleOffsetOrPagePagination (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_Stop_By_Total (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Page_Stop_By_Results_Less_Than_Limit (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_in_POST_Body_Nested (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_Error_on_Page_2 (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_Stop_By_Empty_Results (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_Stop_By_Header_Total (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_Stop_By_MaxPages (0.00s)
+    --- PASS: TestHandleOffsetOrPagePagination/Offset_MaxPages_Not_Hit_Due_To_Other_Stop (0.00s)
+=== RUN   TestHandleCursorPagination
+2025/04/03 07:02:49.963357 [DEBUG] Log level set to 4
+=== RUN   TestHandleCursorPagination/Cursor_in_Body_Field,_Query_Usage
+2025/04/03 07:02:49.963408 [INFO]  Pagination type 'cursor' detected. Starting pagination handling...
+2025/04/03 07:02:49.963416 [DEBUG] Pagination (Cursor): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963420 [DEBUG] Pagination (Cursor): Found next cursor: cursorA
+2025/04/03 07:02:49.963423 [DEBUG] Pagination (Cursor Query): Set param 'cursor=cursorA'. New URL: http://test.com/data?cursor=cursorA
+2025/04/03 07:02:49.963426 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963429 [DEBUG] Pagination (Cursor): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963430 [DEBUG] Pagination (Cursor): Found next cursor: cursorB
+2025/04/03 07:02:49.963434 [DEBUG] Pagination (Cursor Query): Set param 'cursor=cursorB'. New URL: http://test.com/data?cursor=cursorB
+2025/04/03 07:02:49.963436 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963438 [DEBUG] Pagination (Cursor): Extracted 1 items on page 3 (index 2). Total so far: 3
+2025/04/03 07:02:49.963440 [INFO]  Pagination (Cursor): No next cursor found. Stopping.
+2025/04/03 07:02:49.963441 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleCursorPagination/Cursor_in_Header,_Query_Usage_Custom_Param
+2025/04/03 07:02:49.963481 [INFO]  Pagination type 'cursor' detected. Starting pagination handling...
+2025/04/03 07:02:49.963492 [DEBUG] Pagination (Cursor): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963496 [DEBUG] Pagination (Cursor): Found next cursor: tok1
+2025/04/03 07:02:49.963499 [DEBUG] Pagination (Cursor Query): Set param 'next_token=tok1'. New URL: http://test.com/results?next_token=tok1
+2025/04/03 07:02:49.963503 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963508 [DEBUG] Pagination (Cursor): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963510 [DEBUG] Pagination (Cursor): Found next cursor: tok2
+2025/04/03 07:02:49.963513 [DEBUG] Pagination (Cursor Query): Set param 'next_token=tok2'. New URL: http://test.com/results?next_token=tok2
+2025/04/03 07:02:49.963516 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963519 [DEBUG] Pagination (Cursor): Extracted 1 items on page 3 (index 2). Total so far: 3
+2025/04/03 07:02:49.963526 [INFO]  Pagination (Cursor): No next cursor found. Stopping.
+2025/04/03 07:02:49.963529 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleCursorPagination/Cursor_is_Full_URL
+2025/04/03 07:02:49.963572 [INFO]  Pagination type 'cursor' detected. Starting pagination handling...
+2025/04/03 07:02:49.963578 [DEBUG] Pagination (Cursor): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963581 [DEBUG] Pagination (Cursor): Found next cursor: http://base.com/api/v1/stuff?page=2
+2025/04/03 07:02:49.963590 [DEBUG] Pagination (Cursor URL): Set next request URL to: http://base.com/api/v1/stuff?page=2
+2025/04/03 07:02:49.963596 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963598 [DEBUG] Pagination (Cursor): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963600 [DEBUG] Pagination (Cursor): Found next cursor: /api/v1/stuff?page=3
+2025/04/03 07:02:49.963605 [DEBUG] Pagination (Cursor URL): Set next request URL to: http://base.com/api/v1/stuff?page=3
+2025/04/03 07:02:49.963609 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963611 [DEBUG] Pagination (Cursor): Extracted 1 items on page 3 (index 2). Total so far: 3
+2025/04/03 07:02:49.963613 [INFO]  Pagination (Cursor): No next cursor found. Stopping.
+2025/04/03 07:02:49.963614 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleCursorPagination/Cursor_in_POST_Body
+2025/04/03 07:02:49.963655 [INFO]  Pagination type 'cursor' detected. Starting pagination handling...
+2025/04/03 07:02:49.963658 [DEBUG] Pagination: Automatically setting param_location to 'body' due to cursor_usage_mode 'body'
+2025/04/03 07:02:49.963664 [DEBUG] Pagination (Cursor): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963666 [DEBUG] Pagination (Cursor): Found next cursor: cursor1
+2025/04/03 07:02:49.963678 [DEBUG] Pagination (Cursor Body): Updated body path 'pagingInfo' with param 'pageToken': {"pagingInfo":{"pageToken":"cursor1"},"query":"stuff"}
+2025/04/03 07:02:49.963684 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963687 [DEBUG] Pagination (Cursor): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963689 [DEBUG] Pagination (Cursor): Found next cursor: cursor2
+2025/04/03 07:02:49.963697 [DEBUG] Pagination (Cursor Body): Updated body path 'pagingInfo' with param 'pageToken': {"pagingInfo":{"pageToken":"cursor2"},"query":"stuff"}
+2025/04/03 07:02:49.963702 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963704 [DEBUG] Pagination (Cursor): Extracted 1 items on page 3 (index 2). Total so far: 3
+2025/04/03 07:02:49.963706 [INFO]  Pagination (Cursor): No next cursor found. Stopping.
+2025/04/03 07:02:49.963708 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleCursorPagination/Cursor_Error_on_Page_2
+2025/04/03 07:02:49.963765 [INFO]  Pagination type 'cursor' detected. Starting pagination handling...
+2025/04/03 07:02:49.963772 [DEBUG] Pagination (Cursor): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963775 [DEBUG] Pagination (Cursor): Found next cursor: cursorA
+2025/04/03 07:02:49.963778 [DEBUG] Pagination (Cursor Query): Set param 'cursor=cursorA'. New URL: http://test.com/data?cursor=cursorA
+2025/04/03 07:02:49.963785 [INFO]  Attempt 1 failed: Get "http://test.com/data?cursor=cursorA": internal server error
+2025/04/03 07:02:49.963790 [ERROR] Pagination (Cursor): Failed to fetch next page using cursor 'cursorA': request failed after 1 attempts: request failed: Get "http://test.com/data?cursor=cursorA": internal server error. Stopping.
+2025/04/03 07:02:49.963792 [ERROR] Pagination failed: request failed after 1 attempts: request failed: Get "http://test.com/data?cursor=cursorA": internal server error. Returning collected data if any.
+=== RUN   TestHandleCursorPagination/Cursor_Stop_by_MaxPages
+2025/04/03 07:02:49.963831 [INFO]  Pagination type 'cursor' detected. Starting pagination handling...
+2025/04/03 07:02:49.963838 [DEBUG] Pagination (Cursor): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.963840 [DEBUG] Pagination (Cursor): Found next cursor: c1
+2025/04/03 07:02:49.963844 [DEBUG] Pagination (Cursor Query): Set param 'cursor=c1'. New URL: http://test.com/data?cursor=c1
+2025/04/03 07:02:49.963848 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963850 [DEBUG] Pagination (Cursor): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.963863 [DEBUG] Pagination (Cursor): Found next cursor: c2
+2025/04/03 07:02:49.963873 [DEBUG] Pagination (Cursor Query): Set param 'cursor=c2'. New URL: http://test.com/data?cursor=c2
+2025/04/03 07:02:49.963879 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.963882 [DEBUG] Pagination (Cursor): Extracted 1 items on page 3 (index 2). Total so far: 3
+2025/04/03 07:02:49.963884 [DEBUG] Pagination (Cursor): Found next cursor: c3
+2025/04/03 07:02:49.963886 [INFO]  Pagination (Cursor): Reached configured max_pages (3). Stopping.
+2025/04/03 07:02:49.963887 [INFO]  Pagination finished. Returning merged results.
+--- PASS: TestHandleCursorPagination (0.00s)
+    --- PASS: TestHandleCursorPagination/Cursor_in_Body_Field,_Query_Usage (0.00s)
+    --- PASS: TestHandleCursorPagination/Cursor_in_Header,_Query_Usage_Custom_Param (0.00s)
+    --- PASS: TestHandleCursorPagination/Cursor_is_Full_URL (0.00s)
+    --- PASS: TestHandleCursorPagination/Cursor_in_POST_Body (0.00s)
+    --- PASS: TestHandleCursorPagination/Cursor_Error_on_Page_2 (0.00s)
+    --- PASS: TestHandleCursorPagination/Cursor_Stop_by_MaxPages (0.00s)
+=== RUN   TestHandleLinkHeaderPagination
+2025/04/03 07:02:49.963947 [DEBUG] Log level set to 4
+=== RUN   TestHandleLinkHeaderPagination/Simple_Link_Header
+2025/04/03 07:02:49.963990 [INFO]  Pagination type 'link_header' detected. Starting pagination handling...
+2025/04/03 07:02:49.964021 [DEBUG] Pagination (Link Header): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.964029 [DEBUG] Pagination (Link Header): Found next link URL: http://api.example.com/items?page=2
+2025/04/03 07:02:49.964034 [DEBUG] Pagination (Link Header): Set next request URL to: http://api.example.com/items?page=2
+2025/04/03 07:02:49.964037 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.964040 [DEBUG] Pagination (Link Header): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.964044 [DEBUG] Pagination (Link Header): Found next link URL: http://api.example.com/items?page=3
+2025/04/03 07:02:49.964047 [DEBUG] Pagination (Link Header): Set next request URL to: http://api.example.com/items?page=3
+2025/04/03 07:02:49.964050 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.964052 [DEBUG] Pagination (Link Header): Extracted 1 items on page 3 (index 2). Total so far: 3
+2025/04/03 07:02:49.964054 [INFO]  Pagination (Link Header): No 'next' link found in headers. Stopping.
+2025/04/03 07:02:49.964056 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleLinkHeaderPagination/Link_Header_with_Multiple_Links
+2025/04/03 07:02:49.964096 [INFO]  Pagination type 'link_header' detected. Starting pagination handling...
+2025/04/03 07:02:49.964104 [DEBUG] Pagination (Link Header): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.964111 [DEBUG] Pagination (Link Header): Found next link URL: http://api.example.com/data?p=2
+2025/04/03 07:02:49.964114 [DEBUG] Pagination (Link Header): Set next request URL to: http://api.example.com/data?p=2
+2025/04/03 07:02:49.964117 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.964119 [DEBUG] Pagination (Link Header): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.964124 [INFO]  Pagination (Link Header): No 'next' link found in headers. Stopping.
+2025/04/03 07:02:49.964126 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleLinkHeaderPagination/Link_Header_Relative_URL
+2025/04/03 07:02:49.964164 [INFO]  Pagination type 'link_header' detected. Starting pagination handling...
+2025/04/03 07:02:49.964171 [DEBUG] Pagination (Link Header): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.964175 [DEBUG] Pagination (Link Header): Found next link URL: /v2/records?cursor=abc
+2025/04/03 07:02:49.964179 [DEBUG] Pagination (Link Header): Set next request URL to: http://api.example.com/v2/records?cursor=abc
+2025/04/03 07:02:49.964182 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.964184 [DEBUG] Pagination (Link Header): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.964186 [INFO]  Pagination (Link Header): No 'next' link found in headers. Stopping.
+2025/04/03 07:02:49.964188 [INFO]  Pagination finished. Returning merged results.
+=== RUN   TestHandleLinkHeaderPagination/Link_Header_Error_on_Page_2
+2025/04/03 07:02:49.964224 [INFO]  Pagination type 'link_header' detected. Starting pagination handling...
+2025/04/03 07:02:49.964232 [DEBUG] Pagination (Link Header): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.964236 [DEBUG] Pagination (Link Header): Found next link URL: http://api.example.com/items?page=2
+2025/04/03 07:02:49.964239 [DEBUG] Pagination (Link Header): Set next request URL to: http://api.example.com/items?page=2
+2025/04/03 07:02:49.964246 [INFO]  Attempt 1 failed: Get "http://api.example.com/items?page=2": access denied
+2025/04/03 07:02:49.964256 [ERROR] Pagination (Link Header): Failed to fetch next page using link 'http://api.example.com/items?page=2': request failed after 1 attempts: request failed: Get "http://api.example.com/items?page=2": access denied. Stopping.
+2025/04/03 07:02:49.964260 [ERROR] Pagination failed: request failed after 1 attempts: request failed: Get "http://api.example.com/items?page=2": access denied. Returning collected data if any.
+=== RUN   TestHandleLinkHeaderPagination/Link_Header_Stop_By_MaxPages
+2025/04/03 07:02:49.964298 [INFO]  Pagination type 'link_header' detected. Starting pagination handling...
+2025/04/03 07:02:49.964304 [DEBUG] Pagination (Link Header): Extracted 1 items on page 1 (index 0). Total so far: 1
+2025/04/03 07:02:49.964307 [DEBUG] Pagination (Link Header): Found next link URL: /items?page=2
+2025/04/03 07:02:49.964312 [DEBUG] Pagination (Link Header): Set next request URL to: http://api.example.com/items?page=2
+2025/04/03 07:02:49.964314 [DEBUG] Attempt 1 successful with status 200 or non-retryable error.
+2025/04/03 07:02:49.964317 [DEBUG] Pagination (Link Header): Extracted 1 items on page 2 (index 1). Total so far: 2
+2025/04/03 07:02:49.964320 [DEBUG] Pagination (Link Header): Found next link URL: /items?page=3
+2025/04/03 07:02:49.964321 [INFO]  Pagination (Link Header): Reached configured max_pages (2). Stopping.
+2025/04/03 07:02:49.964323 [INFO]  Pagination finished. Returning merged results.
+--- PASS: TestHandleLinkHeaderPagination (0.00s)
+    --- PASS: TestHandleLinkHeaderPagination/Simple_Link_Header (0.00s)
+    --- PASS: TestHandleLinkHeaderPagination/Link_Header_with_Multiple_Links (0.00s)
+    --- PASS: TestHandleLinkHeaderPagination/Link_Header_Relative_URL (0.00s)
+    --- PASS: TestHandleLinkHeaderPagination/Link_Header_Error_on_Page_2 (0.00s)
+    --- PASS: TestHandleLinkHeaderPagination/Link_Header_Stop_By_MaxPages (0.00s)
+=== RUN   TestParseLinkHeader
+=== RUN   TestParseLinkHeader/No_Link_Header
+=== RUN   TestParseLinkHeader/Simple_Next_Link
+=== RUN   TestParseLinkHeader/Multiple_Links_Including_Next
+=== RUN   TestParseLinkHeader/Multiple_Link_Headers
+=== RUN   TestParseLinkHeader/Link_with_different_rel_types_(should_ignore)
+=== RUN   TestParseLinkHeader/No_next_link_present
+=== RUN   TestParseLinkHeader/Link_with_quotes_around_rel
+=== RUN   TestParseLinkHeader/Link_without_quotes_around_known_rel_(should_still_parse)
+=== RUN   TestParseLinkHeader/Link_with_extra_spaces
+=== RUN   TestParseLinkHeader/GitHub_style_link_header
+--- PASS: TestParseLinkHeader (0.00s)
+    --- PASS: TestParseLinkHeader/No_Link_Header (0.00s)
+    --- PASS: TestParseLinkHeader/Simple_Next_Link (0.00s)
+    --- PASS: TestParseLinkHeader/Multiple_Links_Including_Next (0.00s)
+    --- PASS: TestParseLinkHeader/Multiple_Link_Headers (0.00s)
+    --- PASS: TestParseLinkHeader/Link_with_different_rel_types_(should_ignore) (0.00s)
+    --- PASS: TestParseLinkHeader/No_next_link_present (0.00s)
+    --- PASS: TestParseLinkHeader/Link_with_quotes_around_rel (0.00s)
+    --- PASS: TestParseLinkHeader/Link_without_quotes_around_known_rel_(should_still_parse) (0.00s)
+    --- PASS: TestParseLinkHeader/Link_with_extra_spaces (0.00s)
+    --- PASS: TestParseLinkHeader/GitHub_style_link_header (0.00s)
+=== RUN   TestMakeAbsoluteURL
+=== RUN   TestMakeAbsoluteURL/Absolute_Next_URL
+=== RUN   TestMakeAbsoluteURL/Relative_Path_Next_URL
+=== RUN   TestMakeAbsoluteURL/Relative_Path_Parent_Dir
+=== RUN   TestMakeAbsoluteURL/Root_Relative_Path
+=== RUN   TestMakeAbsoluteURL/Empty_Next_URL
+=== RUN   TestMakeAbsoluteURL/Invalid_Next_URL_Syntax
+=== RUN   TestMakeAbsoluteURL/Base_URL_with_Path
+=== RUN   TestMakeAbsoluteURL/Base_URL_ends_no_slash
+=== RUN   TestMakeAbsoluteURL/Nil_Base_URL
+=== RUN   TestMakeAbsoluteURL/Nil_Base_URL,_Absolute_Next
+--- PASS: TestMakeAbsoluteURL (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Absolute_Next_URL (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Relative_Path_Next_URL (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Relative_Path_Parent_Dir (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Root_Relative_Path (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Empty_Next_URL (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Invalid_Next_URL_Syntax (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Base_URL_with_Path (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Base_URL_ends_no_slash (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Nil_Base_URL (0.00s)
+    --- PASS: TestMakeAbsoluteURL/Nil_Base_URL,_Absolute_Next (0.00s)
+=== RUN   TestFindOrCreateTargetPath
+2025/04/03 07:02:49.964721 [DEBUG] Log level set to 4
+=== RUN   TestFindOrCreateTargetPath/Empty_Path
+=== RUN   TestFindOrCreateTargetPath/Simple_Path_Exists_-_Get_Target
+=== RUN   TestFindOrCreateTargetPath/Create_Simple_Path
+=== RUN   TestFindOrCreateTargetPath/Create_Nested_Path
+=== RUN   TestFindOrCreateTargetPath/Path_Collides_with_Non-Map_(Intermediate)
+=== RUN   TestFindOrCreateTargetPath/Path_Collides_with_Non-Map_(Final)
+=== RUN   TestFindOrCreateTargetPath/Invalid_Path_-_Starts_with_Dot
+=== RUN   TestFindOrCreateTargetPath/Invalid_Path_-_Ends_with_Dot
+=== RUN   TestFindOrCreateTargetPath/Invalid_Path_-_Double_Dot
+=== RUN   TestFindOrCreateTargetPath/Invalid_Path_-_Just_a_Dot
+--- PASS: TestFindOrCreateTargetPath (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Empty_Path (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Simple_Path_Exists_-_Get_Target (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Create_Simple_Path (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Create_Nested_Path (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Path_Collides_with_Non-Map_(Intermediate) (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Path_Collides_with_Non-Map_(Final) (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Invalid_Path_-_Starts_with_Dot (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Invalid_Path_-_Ends_with_Dot (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Invalid_Path_-_Double_Dot (0.00s)
+    --- PASS: TestFindOrCreateTargetPath/Invalid_Path_-_Just_a_Dot (0.00s)
+PASS
+ok  	api-tool/internal/executor	0.927s
+=== RUN   TestNewClient
+=== RUN   TestNewClient/Defaults_(No_Auth,_No_Skip,_No_Jar,_FIPS_off)
+=== RUN   TestNewClient/TLS_Skip_Verify_Enabled
+2025/04/03 07:02:49.810941 [INFO]  TLS certificate verification is DISABLED for API base URL: http://test.com
+=== RUN   TestNewClient/Cookie_Jar_Enabled_(Temporary)
+=== RUN   TestNewClient/Cookie_Jar_Enabled_(Persistent)
+=== RUN   TestNewClient/Auth_Override_API_(Basic)
+=== RUN   TestNewClient/Auth_Global_Default_(Bearer)
+=== RUN   TestNewClient/NTLM_Auth
+=== RUN   TestNewClient/NTLM_Auth_Missing_Creds
+=== RUN   TestNewClient/OAuth2_Auth
+=== RUN   TestNewClient/OAuth2_Auth_With_Cookie_Jar
+=== RUN   TestNewClient/OAuth2_Auth_Missing_Creds
+=== RUN   TestNewClient/Digest_Auth_(FIPS_Off)
+=== RUN   TestNewClient/Digest_Auth_(FIPS_On)
+2025/04/03 07:02:49.811340 [INFO]  FIPS Mode is ENABLED. Non-FIPS algorithms (e.g., MD5 Digest) will be disallowed.
+=== RUN   TestNewClient/Unsupported_Auth
+--- PASS: TestNewClient (0.00s)
+    --- PASS: TestNewClient/Defaults_(No_Auth,_No_Skip,_No_Jar,_FIPS_off) (0.00s)
+    --- PASS: TestNewClient/TLS_Skip_Verify_Enabled (0.00s)
+    --- PASS: TestNewClient/Cookie_Jar_Enabled_(Temporary) (0.00s)
+    --- PASS: TestNewClient/Cookie_Jar_Enabled_(Persistent) (0.00s)
+    --- PASS: TestNewClient/Auth_Override_API_(Basic) (0.00s)
+    --- PASS: TestNewClient/Auth_Global_Default_(Bearer) (0.00s)
+    --- PASS: TestNewClient/NTLM_Auth (0.00s)
+    --- PASS: TestNewClient/NTLM_Auth_Missing_Creds (0.00s)
+    --- PASS: TestNewClient/OAuth2_Auth (0.00s)
+    --- PASS: TestNewClient/OAuth2_Auth_With_Cookie_Jar (0.00s)
+    --- PASS: TestNewClient/OAuth2_Auth_Missing_Creds (0.00s)
+    --- PASS: TestNewClient/Digest_Auth_(FIPS_Off) (0.00s)
+    --- PASS: TestNewClient/Digest_Auth_(FIPS_On) (0.00s)
+    --- PASS: TestNewClient/Unsupported_Auth (0.00s)
+=== RUN   TestLogCookieJar
+2025/04/03 07:02:49.811437 [DEBUG] Log level set to 4
+2025/04/03 07:02:49.811529 [DEBUG] Cookies in jar for URL 'http://test.com': [session=123]
+2025/04/03 07:02:49.811537 [DEBUG] Error parsing URL ':invalid-url:' for logging cookie jar: parse ":invalid-url:": missing protocol scheme
+2025/04/03 07:02:49.811542 [DEBUG] No cookies in jar for URL 'http://other.com'
+--- PASS: TestLogCookieJar (0.00s)
+PASS
+ok  	api-tool/internal/httpclient	0.774s
+=== RUN   TestRunFilter
+=== RUN   TestRunFilter/Valid_Filter_and_Input
+=== RUN   TestRunFilter/Valid_Filter_-_Raw_Output_Number
+=== RUN   TestRunFilter/Valid_Filter_-_Complex_Output_JSON
+=== RUN   TestRunFilter/JQ_Not_Found
+=== RUN   TestRunFilter/JQ_Execution_Error_(bad_filter)
+=== RUN   TestRunFilter/JQ_Error_on_Invalid_Input_JSON
+=== RUN   TestRunFilter/Empty_Input
+=== RUN   TestRunFilter/Empty_Filter
+=== RUN   TestRunFilter/Successful_run_with_stderr_warning
+--- PASS: TestRunFilter (0.00s)
+    --- PASS: TestRunFilter/Valid_Filter_and_Input (0.00s)
+    --- PASS: TestRunFilter/Valid_Filter_-_Raw_Output_Number (0.00s)
+    --- PASS: TestRunFilter/Valid_Filter_-_Complex_Output_JSON (0.00s)
+    --- PASS: TestRunFilter/JQ_Not_Found (0.00s)
+    --- PASS: TestRunFilter/JQ_Execution_Error_(bad_filter) (0.00s)
+    --- PASS: TestRunFilter/JQ_Error_on_Invalid_Input_JSON (0.00s)
+    --- PASS: TestRunFilter/Empty_Input (0.00s)
+    --- PASS: TestRunFilter/Empty_Filter (0.00s)
+    --- PASS: TestRunFilter/Successful_run_with_stderr_warning (0.00s)
+PASS
+ok  	api-tool/internal/jq	1.056s
+=== RUN   TestParseLevel
+=== RUN   TestParseLevel/none
+=== RUN   TestParseLevel/NONE
+=== RUN   TestParseLevel/error
+=== RUN   TestParseLevel/ERROR
+=== RUN   TestParseLevel/warn
+=== RUN   TestParseLevel/WARN
+=== RUN   TestParseLevel/warning
+=== RUN   TestParseLevel/WARNING
+=== RUN   TestParseLevel/info
+=== RUN   TestParseLevel/INFO
+=== RUN   TestParseLevel/debug
+=== RUN   TestParseLevel/DEBUG
+=== RUN   TestParseLevel/#00
+=== RUN   TestParseLevel/invalid
+=== RUN   TestParseLevel/information
+--- PASS: TestParseLevel (0.00s)
+    --- PASS: TestParseLevel/none (0.00s)
+    --- PASS: TestParseLevel/NONE (0.00s)
+    --- PASS: TestParseLevel/error (0.00s)
+    --- PASS: TestParseLevel/ERROR (0.00s)
+    --- PASS: TestParseLevel/warn (0.00s)
+    --- PASS: TestParseLevel/WARN (0.00s)
+    --- PASS: TestParseLevel/warning (0.00s)
+    --- PASS: TestParseLevel/WARNING (0.00s)
+    --- PASS: TestParseLevel/info (0.00s)
+    --- PASS: TestParseLevel/INFO (0.00s)
+    --- PASS: TestParseLevel/debug (0.00s)
+    --- PASS: TestParseLevel/DEBUG (0.00s)
+    --- PASS: TestParseLevel/#00 (0.00s)
+    --- PASS: TestParseLevel/invalid (0.00s)
+    --- PASS: TestParseLevel/information (0.00s)
+=== RUN   TestSetGetLevel
+=== RUN   TestSetGetLevel/Level_0
+=== RUN   TestSetGetLevel/Level_1
+=== RUN   TestSetGetLevel/Level_2
+=== RUN   TestSetGetLevel/Level_3
+=== RUN   TestSetGetLevel/Level_4
+2025/04/03 07:02:50.226969 [DEBUG] Log level set to 4
+--- PASS: TestSetGetLevel (0.00s)
+    --- PASS: TestSetGetLevel/Level_0 (0.00s)
+    --- PASS: TestSetGetLevel/Level_1 (0.00s)
+    --- PASS: TestSetGetLevel/Level_2 (0.00s)
+    --- PASS: TestSetGetLevel/Level_3 (0.00s)
+    --- PASS: TestSetGetLevel/Level_4 (0.00s)
+=== RUN   TestSetupLogging
+=== RUN   TestSetupLogging/debug
+=== RUN   TestSetupLogging/info
+=== RUN   TestSetupLogging/warn
+=== RUN   TestSetupLogging/error
+=== RUN   TestSetupLogging/none
+=== RUN   TestSetupLogging/invalid-level
+--- PASS: TestSetupLogging (0.00s)
+    --- PASS: TestSetupLogging/debug (0.00s)
+    --- PASS: TestSetupLogging/info (0.00s)
+    --- PASS: TestSetupLogging/warn (0.00s)
+    --- PASS: TestSetupLogging/error (0.00s)
+    --- PASS: TestSetupLogging/none (0.00s)
+    --- PASS: TestSetupLogging/invalid-level (0.00s)
+=== RUN   TestLogfOutput
+=== RUN   TestLogfOutput/DebugAtDebug
+2025/04/03 07:02:50.227335 [DEBUG] Log level set to 4
+=== RUN   TestLogfOutput/InfoAtDebug
+2025/04/03 07:02:50.227368 [DEBUG] Log level set to 4
+=== RUN   TestLogfOutput/WarnAtDebug
+2025/04/03 07:02:50.227392 [DEBUG] Log level set to 4
+=== RUN   TestLogfOutput/ErrorAtDebug
+2025/04/03 07:02:50.227412 [DEBUG] Log level set to 4
+=== RUN   TestLogfOutput/InfoAtInfo
+=== RUN   TestLogfOutput/DebugAtInfo
+=== RUN   TestLogfOutput/WarnAtInfo
+=== RUN   TestLogfOutput/ErrorAtInfo
+=== RUN   TestLogfOutput/ErrorAtWarning
+=== RUN   TestLogfOutput/WarnAtWarning
+=== RUN   TestLogfOutput/InfoAtWarning
+=== RUN   TestLogfOutput/ErrorAtError
+=== RUN   TestLogfOutput/WarnAtError
+=== RUN   TestLogfOutput/AnythingAtNone
+=== RUN   TestLogfOutput/ErrorAtNone
+--- PASS: TestLogfOutput (0.00s)
+    --- PASS: TestLogfOutput/DebugAtDebug (0.00s)
+    --- PASS: TestLogfOutput/InfoAtDebug (0.00s)
+    --- PASS: TestLogfOutput/WarnAtDebug (0.00s)
+    --- PASS: TestLogfOutput/ErrorAtDebug (0.00s)
+    --- PASS: TestLogfOutput/InfoAtInfo (0.00s)
+    --- PASS: TestLogfOutput/DebugAtInfo (0.00s)
+    --- PASS: TestLogfOutput/WarnAtInfo (0.00s)
+    --- PASS: TestLogfOutput/ErrorAtInfo (0.00s)
+    --- PASS: TestLogfOutput/ErrorAtWarning (0.00s)
+    --- PASS: TestLogfOutput/WarnAtWarning (0.00s)
+    --- PASS: TestLogfOutput/InfoAtWarning (0.00s)
+    --- PASS: TestLogfOutput/ErrorAtError (0.00s)
+    --- PASS: TestLogfOutput/WarnAtError (0.00s)
+    --- PASS: TestLogfOutput/AnythingAtNone (0.00s)
+    --- PASS: TestLogfOutput/ErrorAtNone (0.00s)
+PASS
+ok  	api-tool/internal/logging	1.148s
+=== RUN   TestTextTemplateMissingKeyErrorOption
+--- PASS: TestTextTemplateMissingKeyErrorOption (0.00s)
+=== RUN   TestRender
+=== RUN   TestRender/Simple_Substitution
+=== RUN   TestRender/Multiple_Substitutions
+=== RUN   TestRender/Empty_Template_String
+=== RUN   TestRender/Nil_Data
+=== RUN   TestRender/Empty_Data_Map
+=== RUN   TestRender/Missing_Key_in_Data
+=== RUN   TestRender/Invalid_Template_Syntax
+=== RUN   TestRender/Substitute_Empty_Value
+=== RUN   TestRender/Template_with_No_Substitutions
+=== RUN   TestRender/Substitute_String_Containing_Template_Syntax
+--- PASS: TestRender (0.00s)
+    --- PASS: TestRender/Simple_Substitution (0.00s)
+    --- PASS: TestRender/Multiple_Substitutions (0.00s)
+    --- PASS: TestRender/Empty_Template_String (0.00s)
+    --- PASS: TestRender/Nil_Data (0.00s)
+    --- PASS: TestRender/Empty_Data_Map (0.00s)
+    --- PASS: TestRender/Missing_Key_in_Data (0.00s)
+    --- PASS: TestRender/Invalid_Template_Syntax (0.00s)
+    --- PASS: TestRender/Substitute_Empty_Value (0.00s)
+    --- PASS: TestRender/Template_with_No_Substitutions (0.00s)
+    --- PASS: TestRender/Substitute_String_Containing_Template_Syntax (0.00s)
+PASS
+ok  	api-tool/internal/template	0.884s
+=== RUN   TestExpandEnvUniversal
+=== RUN   TestExpandEnvUniversal/No_Vars
+=== RUN   TestExpandEnvUniversal/Unix_Var_Simple
+=== RUN   TestExpandEnvUniversal/Unix_Var_Brace
+=== RUN   TestExpandEnvUniversal/Windows_Var
+=== RUN   TestExpandEnvUniversal/Mixed_Vars
+=== RUN   TestExpandEnvUniversal/Undefined_Unix_Var
+=== RUN   TestExpandEnvUniversal/Undefined_Windows_Var
+=== RUN   TestExpandEnvUniversal/Mixed_Defined/Undefined
+=== RUN   TestExpandEnvUniversal/Adjacent_Vars
+=== RUN   TestExpandEnvUniversal/Empty_Input
+=== RUN   TestExpandEnvUniversal/Only_Delimiters
+=== RUN   TestExpandEnvUniversal/Incomplete_Unix
+=== RUN   TestExpandEnvUniversal/Incomplete_Windows
+=== RUN   TestExpandEnvUniversal/Percent_Sign_Not_Var
+=== RUN   TestExpandEnvUniversal/Dollar_Sign_Not_Var
+--- PASS: TestExpandEnvUniversal (0.00s)
+    --- PASS: TestExpandEnvUniversal/No_Vars (0.00s)
+    --- PASS: TestExpandEnvUniversal/Unix_Var_Simple (0.00s)
+    --- PASS: TestExpandEnvUniversal/Unix_Var_Brace (0.00s)
+    --- PASS: TestExpandEnvUniversal/Windows_Var (0.00s)
+    --- PASS: TestExpandEnvUniversal/Mixed_Vars (0.00s)
+    --- PASS: TestExpandEnvUniversal/Undefined_Unix_Var (0.00s)
+    --- PASS: TestExpandEnvUniversal/Undefined_Windows_Var (0.00s)
+    --- PASS: TestExpandEnvUniversal/Mixed_Defined/Undefined (0.00s)
+    --- PASS: TestExpandEnvUniversal/Adjacent_Vars (0.00s)
+    --- PASS: TestExpandEnvUniversal/Empty_Input (0.00s)
+    --- PASS: TestExpandEnvUniversal/Only_Delimiters (0.00s)
+    --- PASS: TestExpandEnvUniversal/Incomplete_Unix (0.00s)
+    --- PASS: TestExpandEnvUniversal/Incomplete_Windows (0.00s)
+    --- PASS: TestExpandEnvUniversal/Percent_Sign_Not_Var (0.00s)
+    --- PASS: TestExpandEnvUniversal/Dollar_Sign_Not_Var (0.00s)
+=== RUN   TestSnippet
+=== RUN   TestSnippet/Nil_input
+=== RUN   TestSnippet/Empty_input
+=== RUN   TestSnippet/Short_input
+=== RUN   TestSnippet/Exact_max_length
+=== RUN   TestSnippet/Long_input
+=== RUN   TestSnippet/Long_Unicode_Safe
+=== RUN   TestSnippet/Exact_Unicode_Safe
+=== RUN   TestSnippet/Over_Unicode_Safe
+--- PASS: TestSnippet (0.00s)
+    --- PASS: TestSnippet/Nil_input (0.00s)
+    --- PASS: TestSnippet/Empty_input (0.00s)
+    --- PASS: TestSnippet/Short_input (0.00s)
+    --- PASS: TestSnippet/Exact_max_length (0.00s)
+    --- PASS: TestSnippet/Long_input (0.00s)
+    --- PASS: TestSnippet/Long_Unicode_Safe (0.00s)
+    --- PASS: TestSnippet/Exact_Unicode_Safe (0.00s)
+    --- PASS: TestSnippet/Over_Unicode_Safe (0.00s)
+=== RUN   TestLooksLikeJSON
+=== RUN   TestLooksLikeJSON/Empty_String
+=== RUN   TestLooksLikeJSON/Simple_Object
+=== RUN   TestLooksLikeJSON/Simple_Array
+=== RUN   TestLooksLikeJSON/Object_with_Whitespace
+=== RUN   TestLooksLikeJSON/Array_with_Whitespace
+=== RUN   TestLooksLikeJSON/Just_Braces
+=== RUN   TestLooksLikeJSON/Just_Brackets
+=== RUN   TestLooksLikeJSON/Incomplete_Object
+=== RUN   TestLooksLikeJSON/Incomplete_Array
+=== RUN   TestLooksLikeJSON/Plain_String
+=== RUN   TestLooksLikeJSON/Number_String
+=== RUN   TestLooksLikeJSON/Boolean_String
+=== RUN   TestLooksLikeJSON/XML_String
+=== RUN   TestLooksLikeJSON/Only_Whitespace
+=== RUN   TestLooksLikeJSON/Object_Incorrect_Brackets
+=== RUN   TestLooksLikeJSON/Array_Incorrect_Braces
+--- PASS: TestLooksLikeJSON (0.00s)
+    --- PASS: TestLooksLikeJSON/Empty_String (0.00s)
+    --- PASS: TestLooksLikeJSON/Simple_Object (0.00s)
+    --- PASS: TestLooksLikeJSON/Simple_Array (0.00s)
+    --- PASS: TestLooksLikeJSON/Object_with_Whitespace (0.00s)
+    --- PASS: TestLooksLikeJSON/Array_with_Whitespace (0.00s)
+    --- PASS: TestLooksLikeJSON/Just_Braces (0.00s)
+    --- PASS: TestLooksLikeJSON/Just_Brackets (0.00s)
+    --- PASS: TestLooksLikeJSON/Incomplete_Object (0.00s)
+    --- PASS: TestLooksLikeJSON/Incomplete_Array (0.00s)
+    --- PASS: TestLooksLikeJSON/Plain_String (0.00s)
+    --- PASS: TestLooksLikeJSON/Number_String (0.00s)
+    --- PASS: TestLooksLikeJSON/Boolean_String (0.00s)
+    --- PASS: TestLooksLikeJSON/XML_String (0.00s)
+    --- PASS: TestLooksLikeJSON/Only_Whitespace (0.00s)
+    --- PASS: TestLooksLikeJSON/Object_Incorrect_Brackets (0.00s)
+    --- PASS: TestLooksLikeJSON/Array_Incorrect_Braces (0.00s)
+PASS
+ok  	api-tool/internal/util	0.992s
+FAIL
