@@ -50,7 +50,7 @@ Ensure you have Go (version 1.22 or later recommended) installed and configured.
 
 ```sh
 # Clone the repository
-git clone <YOUR_REPO_URL_HERE> api-tool  # Replace with your repo URL
+git clone https://github.com/brian-c-moore/api-tool.git
 cd api-tool
 
 # Tidy dependencies
