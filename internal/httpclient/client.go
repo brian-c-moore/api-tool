@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"api-tool/internal/auth" // Import the auth package
+	"api-tool/internal/auth"
 	"api-tool/internal/config"
 	"api-tool/internal/logging"
 
@@ -47,11 +47,19 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     true, // Keep true by default, let TLSNextProto handle forcing HTTP/1.1
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	// Force HTTP/1.1 if configured
+	if apiCfg.ForceHTTP1 {
+		logging.Logf(logging.Info, "Forcing HTTP/1.1 for API: %s", apiCfg.BaseURL)
+		// Disable HTTP/2 negotiation via ALPN
+		baseTransport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+		baseTransport.ForceAttemptHTTP2 = false // Also explicitly disable the http2 transport attempt
 	}
 
 	if apiCfg.TlsSkipVerify {
@@ -71,6 +79,8 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		if authCfg == nil || authCfg.Credentials["username"] == "" || authCfg.Credentials["password"] == "" {
 			return nil, fmt.Errorf("ntlm authentication requires username and password in auth credentials")
 		}
+        // Ensure NTLM forces HTTP/1.1 if ForceHTTP1 is set
+        // The ForceHTTP1 logic above already modifies baseTransport, which ntlmssp wraps.
 		finalTransport = ntlmssp.Negotiator{RoundTripper: baseTransport} // Wrap baseTransport
 
 	case "digest":
@@ -79,12 +89,12 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 			return nil, fmt.Errorf("digest authentication requires username and password in auth credentials")
 		}
 		// Use the new DigestAuthRoundTripper from the auth package
-		// <<< MODIFIED: Pass fipsMode >>>
+		// Pass fipsMode
 		finalTransport = &auth.DigestAuthRoundTripper{
 			Username: authCfg.Credentials["username"],
 			Password: authCfg.Credentials["password"],
 			FipsMode: fipsMode, // Pass the flag
-			Next:     baseTransport, // Wrap baseTransport
+			Next:     baseTransport, // Wrap baseTransport (which might be HTTP/1.1 forced)
 		}
 
 	case "oauth2":
@@ -94,7 +104,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		if authCfg == nil {
 			return nil, fmt.Errorf("oauth2 configuration requires 'auth' section in config")
 		}
-		// <<< ADDED: Check FIPS mode for OAuth2 (optional, but good practice) >>>
+		// Check FIPS mode for OAuth2 
 		if fipsMode {
 			// Check if Go's crypto libraries are FIPS compliant in this build/environment.
 			// This is complex and usually handled by build tags or OS-level settings.
@@ -118,7 +128,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 			// TODO: Add AuthStyle configuration?
 		}
 
-		// Configure the context with an HTTP client that uses our baseTransport
+		// Configure the context with an HTTP client that uses our (potentially HTTP/1.1 forced) baseTransport
 		ctxClient := &http.Client{
 			Transport: baseTransport, // Use baseTransport here
 			Timeout:   DefaultTimeout, // Inherit timeout
@@ -151,7 +161,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 
 	case "basic", "bearer", "api_key", "none", "":
 		// No special transport needed. Headers applied later.
-		break // finalTransport remains baseTransport
+		break // finalTransport remains baseTransport (which might be HTTP/1.1 forced)
 
 	default:
 		return nil, fmt.Errorf("unsupported authentication type '%s' for client creation", effectiveAuthType)
@@ -160,7 +170,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 	// --- Configure the final client for non-OAuth2 cases ---
 	client := &http.Client{
 		Timeout:   DefaultTimeout,
-		Transport: finalTransport, // Use the potentially wrapped transport
+		Transport: finalTransport, // Use the potentially wrapped (and potentially HTTP/1.1 forced) transport
 	}
 
 	// Configure cookie jar (if not already handled by OAuth2 path)
