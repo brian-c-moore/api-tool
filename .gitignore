@@ -1,0 +1,65 @@
+# Go build artifacts
+/bin/
+/build/
+/dist/
+*.exe
+*.out
+*.test
+*.log
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Git metadata
+*.idx
+*.pack
+
+# Logs and cache
+*.log
+*.bak
+*.tmp
+*.cache
+*.sqlite3
+
+# Env/config files
+.env
+.env.*
+*.secret
+*.key
+*.pem
+*.crt
+*.p12
+
+# Response dumps or outputs
+*.json
+output/
+*.xlsx
+*.csv
+
+# Testing or debug scripts
+test-output/
+test-data/
+
+# Container build artifacts
+*.tar
+*.img
+*.oci
+*.container
+*.pod
+
+# Ansible files
+*.retry
+*.vault
+
+# Secrets management tools
+.sops.yaml
+*.age
+*.gpg
