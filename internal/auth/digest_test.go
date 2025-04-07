@@ -61,7 +61,7 @@ func newMockDigestResponse(statusCode int, headers http.Header, body string) *ht
 		StatusCode: statusCode,
 		Header:     headers,
 		Body:       io.NopCloser(strings.NewReader(body)),
-		Request:    &http.Request{Method: "GET", URL: &url.URL{Scheme: "http", Host: "example.com", Path: "/test"}}, // Dummy request
+		Request:    &http.Request{Method: "GET", URL: &url.URL{Scheme: "http", Host: "mock.test", Path: "/test"}}, // Dummy request using mock host
 	}
 }
 
@@ -75,7 +75,7 @@ func TestDigestAuthRoundTripper_Success_MD5(t *testing.T) {
 		FipsMode: false, // FIPS OFF
 		Next:     mockNext,
 	}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/protected", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/protected", nil) // Use mock host
 	challengeHeader := `Digest realm="TestRealm", qop="auth", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm=MD5`
 	mockFunc := func(calls *int) func(req *http.Request) (*http.Response, error) {
 		return func(req *http.Request) (*http.Response, error) {
@@ -114,7 +114,7 @@ func TestDigestAuthRoundTripper_Success_SHA256_Preferred(t *testing.T) {
 		FipsMode: false, // FIPS OFF, but SHA-256 should still be preferred
 		Next:     mockNext,
 	}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/protected", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/protected", nil) // Use mock host
 	// Server offers SHA-256 first (or only)
 	challengeHeader := `Digest realm="TestRealm", qop="auth, auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm=SHA-256`
 	mockFunc := func(calls *int) func(req *http.Request) (*http.Response, error) {
@@ -151,7 +151,7 @@ func TestDigestAuthRoundTripper_FIPS_Mode_Fail_MD5_Only(t *testing.T) {
 		FipsMode: true, // <<< FIPS ON
 		Next:     mockNext,
 	}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/protected", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/protected", nil) // Use mock host
 	// Server *only* offers MD5
 	challengeHeader := `Digest realm="TestRealm", qop="auth", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm=MD5`
 	callCount := 0
@@ -182,7 +182,7 @@ func TestDigestAuthRoundTripper_FIPS_Mode_Success_SHA256_Offered(t *testing.T) {
 		FipsMode: true, // <<< FIPS ON
 		Next:     mockNext,
 	}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/protected", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/protected", nil) // Use mock host
 	// Server offers SHA-256
 	challengeHeader := `Digest realm="TestRealm", qop="auth", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm=SHA-256`
 	mockFunc := func(calls *int) func(req *http.Request) (*http.Response, error) {
@@ -220,7 +220,7 @@ func TestDigestAuthRoundTripper_Fail_No_Supported_Algo(t *testing.T) {
 		FipsMode: false, // FIPS OFF
 		Next:     mockNext,
 	}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/protected", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/protected", nil) // Use mock host
 	// Server offers only an unsupported algorithm
 	challengeHeader := `Digest realm="TestRealm", qop="auth", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm=UNKNOWN-ALG`
 	callCount := 0
@@ -252,7 +252,7 @@ func TestDigestAuthRoundTripper_AuthInt_With_Body(t *testing.T) {
 		Next:     mockNext,
 	}
 	reqBody := `{"hello":"world"}`
-	initialReq, _ := http.NewRequest("POST", "http://example.com/protected", strings.NewReader(reqBody))
+	initialReq, _ := http.NewRequest("POST", "http://mock.test/protected", strings.NewReader(reqBody)) // Use mock host
 	initialReq.Header.Set("Content-Type", "application/json")
     // Crucially, set GetBody for the test request so the RT can re-read it for auth-int
     initialReq.GetBody = func() (io.ReadCloser, error) {
@@ -306,7 +306,7 @@ func TestDigestAuthRoundTripper_AuthInt_With_Body(t *testing.T) {
 func TestDigestAuthRoundTripper_Non401(t *testing.T) {
 	mockNext := &mockNextRoundTripper{}
 	digestRT := &DigestAuthRoundTripper{Next: mockNext}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/public", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/public", nil) // Use mock host
 	mockResponse := newMockDigestResponse(http.StatusOK, nil, "Public Content")
 	mockNext.RoundTripFunc = func(req *http.Request) (*http.Response, error) { return mockResponse, nil }
 	finalResp, err := digestRT.RoundTrip(initialReq)
@@ -318,7 +318,7 @@ func TestDigestAuthRoundTripper_Non401(t *testing.T) {
 func TestDigestAuthRoundTripper_401NotDigest(t *testing.T) {
 	mockNext := &mockNextRoundTripper{}
 	digestRT := &DigestAuthRoundTripper{Next: mockNext}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/basicauth", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/basicauth", nil) // Use mock host
 	mockResponse := newMockDigestResponse(http.StatusUnauthorized, http.Header{"Www-Authenticate": {"Basic realm=Test"}}, "Unauthorized")
 	mockNext.RoundTripFunc = func(req *http.Request) (*http.Response, error) { return mockResponse, nil }
 	finalResp, err := digestRT.RoundTrip(initialReq)
@@ -330,7 +330,7 @@ func TestDigestAuthRoundTripper_401NotDigest(t *testing.T) {
 func TestDigestAuthRoundTripper_ErrorOnFirstRequest(t *testing.T) {
 	mockNext := &mockNextRoundTripper{}
 	digestRT := &DigestAuthRoundTripper{Next: mockNext}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/error", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/error", nil) // Use mock host
 	expectedErr := errors.New("network error")
 	mockNext.RoundTripFunc = func(req *http.Request) (*http.Response, error) { return nil, expectedErr }
 	finalResp, err := digestRT.RoundTrip(initialReq)
@@ -342,7 +342,7 @@ func TestDigestAuthRoundTripper_ErrorOnFirstRequest(t *testing.T) {
 func TestDigestAuthRoundTripper_ErrorOnSecondRequest(t *testing.T) {
 	mockNext := &mockNextRoundTripper{}
 	digestRT := &DigestAuthRoundTripper{Username: "u", Password: "p", Next: mockNext}
-	initialReq, _ := http.NewRequest("GET", "http://example.com/error2", nil)
+	initialReq, _ := http.NewRequest("GET", "http://mock.test/error2", nil) // Use mock host
 	expectedErr := errors.New("server error on auth")
 	challengeHeader := `Digest realm="Test", qop="auth", nonce="abc", opaque="123"`
 	callCount := 0
