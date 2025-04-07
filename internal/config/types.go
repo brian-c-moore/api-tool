@@ -33,6 +33,7 @@ type APIConfig struct {
 	BaseURL       string                    `yaml:"base_url"`
 	AuthType      string                    `yaml:"auth_type"`
 	TlsSkipVerify bool                      `yaml:"tls_skip_verify,omitempty"`
+	ForceHTTP1    bool                      `yaml:"force_http1,omitempty"`
 	CookieJar     bool                      `yaml:"cookie_jar,omitempty"`
 	Endpoints     map[string]EndpointConfig `yaml:"endpoints"`
 }
