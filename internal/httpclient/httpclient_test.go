@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"time"
 	"testing"
 
-	"api-tool/internal/auth" // Import for DigestAuthRoundTripper type check
+	"api-tool/internal/auth"
 	"api-tool/internal/config"
 	"api-tool/internal/logging"
 
@@ -72,7 +73,6 @@ func getBaseTransport(client *http.Client) (*http.Transport, bool) {
 	return nil, false
 }
 
-
 func TestNewClient(t *testing.T) {
 	apiCfgBase := config.APIConfig{
 		BaseURL:   "http://test.com",
@@ -104,6 +104,7 @@ func TestNewClient(t *testing.T) {
 		expectTlsSkip       bool
 		expectJar           bool // Whether client.Jar should be non-nil
 		expectPersistentJar bool // Whether client.Jar should be the specific persistentJar instance
+		expectedTimeout     time.Duration // Expected timeout on the final client
 		expectError         bool
 		checkTransportType  func(t *testing.T, transport http.RoundTripper) // Function to check transport type
 	}{
@@ -114,6 +115,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:     false, // <<< Pass FIPS mode
 			expectedAuthType:  "none",
 			expectTlsSkip:     false,
+			expectedTimeout:   DefaultTimeout,
 			expectJar:         false,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				_, ok := transport.(*http.Transport)
@@ -127,6 +129,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "none",
 			expectTlsSkip:    true,
+			expectedTimeout:  DefaultTimeout,
 			expectJar:        false,
 		},
 		{
@@ -136,6 +139,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "none",
 			expectTlsSkip:    false,
+			expectedTimeout:  DefaultTimeout,
 			expectJar:        true,
 		},
 		{
@@ -146,6 +150,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:      false,         // <<< Pass FIPS mode
 			expectedAuthType:   "none",
 			expectTlsSkip:      false,
+			expectedTimeout:    DefaultTimeout,
 			expectJar:          true,
 			expectPersistentJar: true,
 		},
@@ -156,6 +161,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "basic",
 			expectTlsSkip:    false,
+			expectedTimeout:  DefaultTimeout,
 			expectJar:        false,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				_, ok := transport.(*http.Transport)
@@ -169,6 +175,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "bearer",
 			expectTlsSkip:    false,
+			expectedTimeout:  DefaultTimeout,
 			expectJar:        false,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				_, ok := transport.(*http.Transport)
@@ -182,6 +189,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "ntlm",
 			expectTlsSkip:    false,
+			expectedTimeout:  DefaultTimeout,
 			expectJar:        false,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				_, ok := transport.(ntlmssp.Negotiator)
@@ -203,6 +211,7 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "oauth2",
 			expectTlsSkip:    false, // Should be propagated to underlying transport
+			expectedTimeout:  DefaultTimeout, // Default timeout for OAuth2 client
 			expectJar:        false,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				_, ok := transport.(*oauth2.Transport)
@@ -216,7 +225,8 @@ func TestNewClient(t *testing.T) {
 			jarInput:           persistentJar,
 			fipsModeInput:      false, // <<< Pass FIPS mode
 			expectedAuthType:   "oauth2",
-			expectJar:          true, // Jar should be set on the final client
+			expectedTimeout:    DefaultTimeout, // Default timeout for OAuth2 client
+			expectJar:          true,           // Jar should be set on the final client
 			expectPersistentJar: true,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				_, ok := transport.(*oauth2.Transport)
@@ -237,6 +247,7 @@ func TestNewClient(t *testing.T) {
 			authCfg:          authCfgBase,
 			fipsModeInput:    false, // <<< Pass FIPS mode (off)
 			expectedAuthType: "digest",
+			expectedTimeout:  DefaultTimeout,
 			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
 				// Check it's our Digest RT
 				digestRT, ok := transport.(*auth.DigestAuthRoundTripper)
@@ -247,20 +258,21 @@ func TestNewClient(t *testing.T) {
 				assert.True(t, okBase, "Digest RT should wrap *http.Transport")
 			},
 		},
-        {
-            name:             "Digest Auth (FIPS On)",
-            apiCfg:           func() config.APIConfig { c := apiCfgBase; c.AuthType = "digest"; return c }(),
-            authCfg:          authCfgBase,
-            fipsModeInput:    true, // <<< Pass FIPS mode (ON)
-            expectedAuthType: "digest",
-            checkTransportType: func(t *testing.T, transport http.RoundTripper) {
-                digestRT, ok := transport.(*auth.DigestAuthRoundTripper)
-                require.True(t, ok, "Expected *auth.DigestAuthRoundTripper")
-                assert.True(t, digestRT.FipsMode, "FipsMode flag should be true in Digest RT")
-                _, okBase := digestRT.Next.(*http.Transport)
-                assert.True(t, okBase, "Digest RT should wrap *http.Transport")
-            },
-        },
+		{
+			name:             "Digest Auth (FIPS On)",
+			apiCfg:           func() config.APIConfig { c := apiCfgBase; c.AuthType = "digest"; return c }(),
+			authCfg:          authCfgBase,
+			fipsModeInput:    true, // <<< Pass FIPS mode (ON)
+			expectedAuthType: "digest",
+			expectedTimeout:  DefaultTimeout,
+			checkTransportType: func(t *testing.T, transport http.RoundTripper) {
+				digestRT, ok := transport.(*auth.DigestAuthRoundTripper)
+				require.True(t, ok, "Expected *auth.DigestAuthRoundTripper")
+				assert.True(t, digestRT.FipsMode, "FipsMode flag should be true in Digest RT")
+				_, okBase := digestRT.Next.(*http.Transport)
+				assert.True(t, okBase, "Digest RT should wrap *http.Transport")
+			},
+		},
 		{
 			name:             "Unsupported Auth",
 			apiCfg:           func() config.APIConfig { c := apiCfgBase; c.AuthType = "magic"; return c }(),
@@ -268,6 +280,24 @@ func TestNewClient(t *testing.T) {
 			fipsModeInput:    false, // <<< Pass FIPS mode
 			expectedAuthType: "magic",
 			expectError:      true,
+		},
+		{
+			name:             "API Specific Timeout",
+			apiCfg:           func() config.APIConfig { c := apiCfgBase; c.TimeoutSeconds = 60; return c }(),
+			authCfg:          authCfgBase,
+			fipsModeInput:    false,
+			expectedAuthType: "none",
+			expectTlsSkip:    false,
+			expectedTimeout:  60 * time.Second, // Expect API specific timeout
+			expectJar:        false,
+		},
+		{
+			name:             "API Specific Timeout with OAuth2",
+			apiCfg:           func() config.APIConfig { c := apiCfgBase; c.AuthType = "oauth2"; c.TimeoutSeconds = 45; return c }(),
+			authCfg:          authCfgBase,
+			fipsModeInput:    false,
+			expectedAuthType: "oauth2",
+			expectedTimeout:  45 * time.Second, // Expect API specific timeout on OAuth2 client
 		},
 	}
 
@@ -293,6 +323,13 @@ func TestNewClient(t *testing.T) {
 					assert.Nil(t, client.Jar)
 				}
 
+				// Check Timeout
+				expectedTimeout := tt.expectedTimeout
+				if expectedTimeout == 0 {
+					expectedTimeout = DefaultTimeout
+				} // Ensure comparison against default if 0
+				assert.Equal(t, expectedTimeout, client.Timeout, "Client timeout mismatch")
+
 				// Check TLS Skip Verify on the base transport
 				baseTransport, ok := getBaseTransport(client)
 				require.True(t, ok, "Could not extract base http.Transport")
@@ -309,33 +346,32 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestLogCookieJar(t *testing.T) {
-    // This test remains unchanged as LogCookieJar was not affected
-    jar, _ := cookiejar.New(nil)
-    testURL, _ := url.Parse("http://test.com")
-    cookie := &http.Cookie{Name: "session", Value: "123"}
-    jar.SetCookies(testURL, []*http.Cookie{cookie})
+	// This test remains unchanged as LogCookieJar was not affected
+	jar, _ := cookiejar.New(nil)
+	testURL, _ := url.Parse("http://test.com")
+	cookie := &http.Cookie{Name: "session", Value: "123"}
+	jar.SetCookies(testURL, []*http.Cookie{cookie})
 
-    // Use a high level first, should not log
-    logging.SetLevel(logging.Info)
-    LogCookieJar(jar, "http://test.com", logging.GetLevel())
-    // TODO: Assert no log output (requires log capture)
+	// Use a high level first, should not log
+	logging.SetLevel(logging.Info)
+	LogCookieJar(jar, "http://test.com", logging.GetLevel())
+	// TODO: Assert no log output (requires log capture)
 
-    // Use debug level, should log
-    logging.SetLevel(logging.Debug)
-    LogCookieJar(jar, "http://test.com", logging.GetLevel())
-    // TODO: Assert log output contains cookie info (requires log capture)
+	// Use debug level, should log
+	logging.SetLevel(logging.Debug)
+	LogCookieJar(jar, "http://test.com", logging.GetLevel())
+	// TODO: Assert log output contains cookie info (requires log capture)
 
-    // Test with nil jar
-    LogCookieJar(nil, "http://test.com", logging.GetLevel())
+	// Test with nil jar
+	LogCookieJar(nil, "http://test.com", logging.GetLevel())
 
-    // Test with invalid URL
-    LogCookieJar(jar, ":invalid-url:", logging.GetLevel())
+	// Test with invalid URL
+	LogCookieJar(jar, ":invalid-url:", logging.GetLevel())
 
-    // Test with no cookies for URL
-    otherURL, _ := url.Parse("http://other.com")
-     LogCookieJar(jar, otherURL.String(), logging.GetLevel())
+	// Test with no cookies for URL
+	otherURL, _ := url.Parse("http://other.com")
+	LogCookieJar(jar, otherURL.String(), logging.GetLevel())
 
-
-    // Reset log level if needed
-    logging.SetLevel(logging.Info)
+	// Reset log level if needed
+	logging.SetLevel(logging.Info)
 }

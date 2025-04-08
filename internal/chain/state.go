@@ -61,7 +61,7 @@ func (s *State) MergeMap(newVars map[string]string) {
 // MergeOSEnv reads all OS environment variables and adds them to the state,
 // potentially overwriting existing keys.
 func (s *State) MergeOSEnv() { // <--- FIX: Moved definition line inside function
-	s.mu.Lock()               // <--- FIX: Lock was outside the function scope before
+	s.mu.Lock() // <--- FIX: Lock was outside the function scope before
 	defer s.mu.Unlock()
 	for _, envVar := range os.Environ() {
 		parts := strings.SplitN(envVar, "=", 2)
@@ -72,4 +72,4 @@ func (s *State) MergeOSEnv() { // <--- FIX: Moved definition line inside functio
 			}
 		}
 	}
-} 
+}

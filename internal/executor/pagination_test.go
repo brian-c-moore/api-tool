@@ -1,4 +1,3 @@
-// internal/executor/pagination_test.go
 package executor
 
 import (
@@ -20,8 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Dummy variables prevent "imported and not used" errors for standard packages
-// sometimes needed indirectly by testify or other operations.
 var (
 	_ = json.Marshal
 	_ = url.Parse
@@ -29,66 +26,51 @@ var (
 
 // ============================================ Mocking Infrastructure ============================================
 
-// mockRoundTripper simulates HTTP responses for pagination tests by implementing http.RoundTripper.
 type mockRoundTripper struct {
 	responses []*http.Response
 	requests  []*http.Request
 	errors    []error
 	callCount int
 	t         *testing.T
-	sleepFunc func(time.Duration) // Added field for mockable sleep
+	sleepFunc func(time.Duration)
 }
 
-// RoundTrip intercepts requests made by the http.Client and returns mock responses/errors.
 func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Store a clone for verification. Make sure GetBody is copied if present.
-	reqClone, _ := copyRequest(req) // Use our copyRequest to handle GetBody correctly
+	reqClone, _ := copyRequest(req)
 	m.requests = append(m.requests, reqClone)
 
 	callIdx := m.callCount
 	m.callCount++
 
-	// Check for a configured error for this specific call index.
 	if len(m.errors) > callIdx && m.errors[callIdx] != nil {
 		return nil, m.errors[callIdx]
 	}
 
-	// Check for a configured response for this specific call index.
 	if len(m.responses) > callIdx && m.responses[callIdx] != nil {
 		resp := m.responses[callIdx]
-
-		// Ensure the response body can be read multiple times by resetting it.
 		if resp.Body != nil {
 			if bodyStr, ok := getMockResponseBody(resp); ok {
-				// Create a new reader from the original string content for this call.
 				resp.Body = io.NopCloser(strings.NewReader(bodyStr))
 			} else {
-				// Log if unable to reset - body might only be readable once.
 				m.t.Logf("Warning: mockRoundTripper: Could not reset mock response body for call %d.", callIdx)
 			}
 		} else {
-			// Explicitly set to nil if no body was intended.
 			resp.Body = nil
 		}
-		// Ensure the mock response is linked to the incoming request for context propagation
 		if resp.Request == nil {
-			resp.Request = reqClone // Link if not already set
+			resp.Request = reqClone
 		}
-		return resp, nil // Return the prepared mock response.
+		return resp, nil
 	}
 
-	// If no response or error was configured for this call index.
 	m.t.Errorf("mockRoundTripper: received unexpected request #%d: %s %s", m.callCount, req.Method, req.URL.String())
 	return nil, fmt.Errorf("mockRoundTripper: unexpected request #%d", m.callCount)
 }
 
-// contextKey defines a key type for storing values in context.
 type contextKey struct{ name string }
 
-// originalBodyKey is used to associate the original body string with a mock response via context.
 var originalBodyKey = &contextKey{"originalBody"}
 
-// getMockResponseBody retrieves the original body string stored via context.
 func getMockResponseBody(resp *http.Response) (string, bool) {
 	if resp == nil || resp.Request == nil || resp.Request.Context() == nil {
 		return "", false
@@ -98,30 +80,26 @@ func getMockResponseBody(resp *http.Response) (string, bool) {
 	return bodyStr, ok
 }
 
-// newMockClient creates an http.Client configured with the mockRoundTripper.
-func newMockClient(t *testing.T, responses []*http.Response, errors []error) (*http.Client, *mockRoundTripper) { // Returns 2 values
+func newMockClient(t *testing.T, responses []*http.Response, errors []error) (*http.Client, *mockRoundTripper) {
 	transport := &mockRoundTripper{
 		responses: responses,
 		errors:    errors,
 		t:         t,
-		sleepFunc: time.Sleep, // Initialize sleepFunc
+		sleepFunc: time.Sleep,
 	}
 	client := &http.Client{
 		Transport: transport,
 	}
-	return client, transport // Returns 2 values
+	return client, transport
 }
 
-// newMockResponse creates an *http.Response suitable for mocking.
 func newMockResponse(statusCode int, headers http.Header, body string) *http.Response {
 	if headers == nil {
 		headers = make(http.Header)
 	}
-	// Auto-set Content-Type for JSON-like bodies if not already set
 	if body != "" && headers.Get("Content-Type") == "" && (strings.HasPrefix(body, "{") || strings.HasPrefix(body, "[")) {
 		headers.Set("Content-Type", "application/json")
 	}
-	// Create a dummy request to attach context holding the original body
 	dummyReq, _ := http.NewRequest("GET", "http://dummy.com", nil)
 	ctx := context.WithValue(dummyReq.Context(), originalBodyKey, body)
 	dummyReq = dummyReq.WithContext(ctx)
@@ -129,11 +107,10 @@ func newMockResponse(statusCode int, headers http.Header, body string) *http.Res
 		StatusCode: statusCode,
 		Header:     headers,
 		Body:       io.NopCloser(strings.NewReader(body)),
-		Request:    dummyReq, // Associate the request with context
+		Request:    dummyReq,
 	}
 }
 
-// newInitialTestRequest creates a basic *http.Request for initializing tests.
 func newInitialTestRequest(method, urlStr string, body string) *http.Request {
 	var bodyReader io.Reader
 	if body != "" {
@@ -141,14 +118,12 @@ func newInitialTestRequest(method, urlStr string, body string) *http.Request {
 	}
 	req, _ := http.NewRequest(method, urlStr, bodyReader)
 	if body != "" {
-		// Set GetBody so it can be re-read
 		req.GetBody = func() (io.ReadCloser, error) {
 			return io.NopCloser(strings.NewReader(body)), nil
 		}
-		// Auto-set Content-Type and Length for non-GET requests with body
 		if method != "GET" && method != "" {
 			if req.Header.Get("Content-Type") == "" {
-				req.Header.Set("Content-Type", "application/json") // Assume JSON for tests
+				req.Header.Set("Content-Type", "application/json")
 			}
 			req.ContentLength = int64(len(body))
 		}
@@ -156,48 +131,40 @@ func newInitialTestRequest(method, urlStr string, body string) *http.Request {
 	return req
 }
 
-// readBodyBytesForTest safely reads body bytes from a request or response for test assertions.
 func readBodyBytesForTest(t *testing.T, source interface{}) []byte {
 	t.Helper()
 	var bodyReader io.ReadCloser
 	var isRequest bool
 	var originalReq *http.Request
 
-	// Determine the source type and get the body reader.
 	switch v := source.(type) {
 	case *http.Request:
-		originalReq = v // Keep reference to original request
+		originalReq = v
 		if v == nil || v.Body == nil {
-			return nil // Nothing to read if request or body is nil.
+			return nil
 		}
 		isRequest = true
-		// Prefer GetBody to allow re-reading.
 		if v.GetBody != nil {
 			var err error
 			bodyReader, err = v.GetBody()
 			require.NoError(t, err, "Failed GetBody in readBodyBytesForTest for Request")
 		} else {
-			// Fallback: Read directly, consuming the original body.
 			bodyReader = v.Body
 		}
-	case *http.Response: // Correct placement inside the switch
+	case *http.Response:
 		if v == nil || v.Body == nil {
-			return nil // Nothing to read if response or body is nil.
+			return nil
 		}
 		bodyReader = v.Body
 	default:
-		// Fail the test if an unsupported type is passed.
 		t.Fatalf("Unsupported type for readBodyBytesForTest: %T", source)
-		return nil // Unreachable, but needed for compiler.
-	} // Correct placement of switch closing brace
+		return nil
+	}
 
-	// Read all bytes from the obtained reader.
 	bytesVal, err := io.ReadAll(bodyReader)
-	// *** FIX: Ensure the reader is closed directly ***
-	bodyReader.Close() // Directly close the io.ReadCloser
+	bodyReader.Close()
 	require.NoError(t, err, "Failed to read body bytes for test")
 
-	// --- Reset the body reader on the original source object ---
 	if resp, ok := source.(*http.Response); ok {
 		if bodyStr, okGet := getMockResponseBody(resp); okGet {
 			resp.Body = io.NopCloser(strings.NewReader(bodyStr))
@@ -208,7 +175,7 @@ func readBodyBytesForTest(t *testing.T, source interface{}) []byte {
 		if originalReq.GetBody != nil {
 			bodyReadCloser, resetErr := originalReq.GetBody()
 			if resetErr == nil {
-				originalReq.Body = bodyReadCloser // Reset the main Body reader
+				originalReq.Body = bodyReadCloser
 			} else {
 				t.Logf("Warning: Could not reset request body after reading for test: %v", resetErr)
 				originalReq.Body = io.NopCloser(bytes.NewReader(bytesVal))
@@ -221,24 +188,22 @@ func readBodyBytesForTest(t *testing.T, source interface{}) []byte {
 	return bytesVal
 }
 
-// expectedRequestDetail defines the structure for verifying subsequent requests in tests.
 type expectedRequestDetail struct {
 	Method   string
 	URL      string
-	BodyJSON string // Use JSON string for body comparison
+	BodyJSON string
 }
 
 // ============================================ Test Functions ============================================
 
 func TestHandleOffsetOrPagePagination(t *testing.T) {
-	// Use Debug level for tests to see detailed logs
 	originalLogLevel := logging.GetLevel()
 	logging.SetLevel(logging.Debug)
-	defer logging.SetLevel(originalLogLevel) // Restore original level after test
+	defer logging.SetLevel(originalLogLevel)
 
 	testCases := []struct {
 		name               string
-		pagCfg             config.PaginationConfig // Use value type here, defaults applied in HandlePagination
+		pagCfg             config.PaginationConfig
 		initialReq         *http.Request
 		initialResp        *http.Response
 		mockResponses      []*http.Response
@@ -247,11 +212,11 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 		expectedJSON       string
 		expectError        bool
 		errorContains      string
-		expectedReqDetails []expectedRequestDetail // Details of subsequent requests
+		expectedReqDetails []expectedRequestDetail
 	}{
 		{
 			name: "Offset Stop By Total",
-			pagCfg: config.PaginationConfig{ // Explicitly set Type for clarity
+			pagCfg: config.PaginationConfig{
 				Type:         "offset",
 				Strategy:     "offset",
 				Limit:        2,
@@ -267,7 +232,7 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 			expectedJSON:  `[{"id":1},{"id":2},{"id":3}]`,
 			expectError:   false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/items?skip=2&take=2"}, // Expect corrected URL
+				{Method: "GET", URL: "http://test.com/items?skip=2&take=2"},
 			},
 		},
 		{
@@ -278,32 +243,32 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 				Limit:        2,
 				ResultsField: "data",
 				PageParam:    "p",
-				SizeParam:    "s", // Maps internally to LimitParam if LimitParam is empty
+				SizeParam:    "s",
 			},
 			initialReq:  newInitialTestRequest("GET", "http://test.com/data?p=1&s=2", ""),
 			initialResp: newMockResponse(200, nil, `{ "data": [{"id": "a"}, {"id": "b"}] }`),
 			mockResponses: []*http.Response{
 				newMockResponse(200, nil, `{ "data": [{"id": "c"}, {"id": "d"}] }`),
-				newMockResponse(200, nil, `{ "data": [{"id": "e"}] }`), // Last page has fewer items
+				newMockResponse(200, nil, `{ "data": [{"id": "e"}] }`),
 			},
 			authType:     "none",
 			expectedJSON: `[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"},{"id":"e"}]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/data?p=2&s=2"}, // Expect page 2
-				{Method: "GET", URL: "http://test.com/data?p=3&s=2"}, // Expect page 3
+				{Method: "GET", URL: "http://test.com/data?p=2&s=2"},
+				{Method: "GET", URL: "http://test.com/data?p=3&s=2"},
 			},
 		},
 		{
 			name: "Offset in POST Body Nested",
 			pagCfg: config.PaginationConfig{
-				Type:          "offset", // Must specify type
+				Type:          "offset",
 				Strategy:      "offset",
 				Limit:         2,
 				OffsetParam:   "startOffset",
-				LimitParam:    "count", // Using 'count' as limit param name
+				LimitParam:    "count",
 				ParamLocation: "body",
-				BodyPath:      "query.options", // Nested path
+				BodyPath:      "query.options",
 				ResultsField:  "response.results",
 				TotalField:    "response.totalRecords",
 			},
@@ -327,17 +292,17 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 				Limit:        2,
 				ResultsField: "items",
 				TotalField:   "total",
-			}, // Uses default offset/limit param names
+			},
 			initialReq:    newInitialTestRequest("GET", "http://test.com/items?offset=0&limit=2", ""),
 			initialResp:   newMockResponse(200, nil, `{"items": [{"id": 1}, {"id": 2}], "total": 4}`),
-			mockResponses: []*http.Response{}, // No successful response for page 2
+			mockResponses: []*http.Response{},
 			mockErrors:    []error{fmt.Errorf("network timeout")},
 			authType:      "none",
-			expectedJSON:  `[{"id":1},{"id":2}]`, // Expect partial results
+			expectedJSON:  `[{"id":1},{"id":2}]`,
 			expectError:   true,
 			errorContains: "network timeout",
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/items?limit=2&offset=2"}, // Expect request for offset 2
+				{Method: "GET", URL: "http://test.com/items?limit=2&offset=2"},
 			},
 		},
 		{
@@ -347,27 +312,27 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 				Strategy:     "offset",
 				Limit:        5,
 				ResultsField: "data",
-			}, // No total field specified
+			},
 			initialReq:    newInitialTestRequest("GET", "http://test.com/data?limit=5&offset=0", ""),
-			initialResp:   newMockResponse(200, nil, `{"data": [{"id": 1}, {"id": 2}]}`), // Fewer than limit initially
-			mockResponses: []*http.Response{newMockResponse(200, nil, `{"data": []}`)},    // Next page is empty
+			initialResp:   newMockResponse(200, nil, `{"data": [{"id": 1}, {"id": 2}]}`),
+			mockResponses: []*http.Response{newMockResponse(200, nil, `{"data": []}`)},
 			authType:      "none",
 			expectedJSON:  `[{"id":1},{"id":2}]`,
 			expectError:   false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/data?limit=5&offset=2"}, // Expect request for offset 2
+				{Method: "GET", URL: "http://test.com/data?limit=5&offset=2"},
 			},
 		},
 		{
 			name: "Offset Stop By Header Total",
 			pagCfg: config.PaginationConfig{
-				Type:        "offset",
-				Strategy:    "offset",
-				Limit:       1,
+				Type:         "offset",
+				Strategy:     "offset",
+				Limit:        1,
 				ResultsField: "items",
-				TotalHeader: "X-Total", // Total comes from header
-				OffsetParam: "skip",
-				LimitParam:  "take",
+				TotalHeader:  "X-Total",
+				OffsetParam:  "skip",
+				LimitParam:   "take",
 			},
 			initialReq:    newInitialTestRequest("GET", "http://test.com/items?skip=0&take=1", ""),
 			initialResp:   newMockResponse(200, http.Header{"X-Total": {"2"}}, `{"items": [{"id": "a"}]}`),
@@ -376,7 +341,7 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 			expectedJSON:  `[{"id":"a"},{"id":"b"}]`,
 			expectError:   false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/items?skip=1&take=1"}, // Expect skip=1
+				{Method: "GET", URL: "http://test.com/items?skip=1&take=1"},
 			},
 		},
 		{
@@ -385,18 +350,18 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 				Type:         "offset",
 				Limit:        2,
 				ResultsField: "items",
-				MaxPages:     2, // <<< Stop after fetching 2 pages (page index 0 and 1)
+				MaxPages:     2,
 			},
 			initialReq:  newInitialTestRequest("GET", "http://test.com/items?limit=2&offset=0", ""),
-			initialResp: newMockResponse(200, nil, `{"items": [1, 2]}`), // Page 1 (index 0)
+			initialResp: newMockResponse(200, nil, `{"items": [1, 2]}`),
 			mockResponses: []*http.Response{
-				newMockResponse(200, nil, `{"items": [3, 4]}`), // Page 2 (index 1) - Should be fetched
+				newMockResponse(200, nil, `{"items": [3, 4]}`),
 			},
 			authType:     "none",
-			expectedJSON: `[1,2,3,4]`, // Only results from first 2 pages
+			expectedJSON: `[1,2,3,4]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/items?limit=2&offset=2"}, // Request for Page 2
+				{Method: "GET", URL: "http://test.com/items?limit=2&offset=2"},
 			},
 		},
 		{
@@ -406,35 +371,32 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 				Limit:        2,
 				ResultsField: "items",
 				TotalField:   "total",
-				MaxPages:     5, // High MaxPages
+				MaxPages:     5,
 			},
 			initialReq:    newInitialTestRequest("GET", "http://test.com/items?limit=2&offset=0", ""),
-			initialResp:   newMockResponse(200, nil, `{"items": [1, 2], "total": 3}`), // Total is 3
-			mockResponses: []*http.Response{newMockResponse(200, nil, `{"items": [3], "total": 3}`)}, // Last item
+			initialResp:   newMockResponse(200, nil, `{"items": [1, 2], "total": 3}`),
+			mockResponses: []*http.Response{newMockResponse(200, nil, `{"items": [3], "total": 3}`)},
 			authType:      "none",
-			expectedJSON:  `[1,2,3]`, // Stops because total reached
+			expectedJSON:  `[1,2,3]`,
 			expectError:   false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/items?limit=2&offset=2"}, // Request for last item
+				{Method: "GET", URL: "http://test.com/items?limit=2&offset=2"},
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// --- Setup ---
 			endpointCfg := config.EndpointConfig{Pagination: &tc.pagCfg}
-			// Correctly assign both return values, ignore transport if not needed immediately
-			mockClient, _ := newMockClient(t, tc.mockResponses, tc.mockErrors) // <-- Corrected Assignment
+			mockClient, _ := newMockClient(t, tc.mockResponses, tc.mockErrors)
 			dummyCreds := map[string]string{}
 			dummyRetry := config.RetryConfig{MaxAttempts: 1}
 
 			initialReqForRun, err := copyRequest(tc.initialReq)
-			require.NoError(t, err, "Failed to copy initial request for run")
+			require.NoError(t, err)
 			initialRespForRun := newMockResponse(tc.initialResp.StatusCode, tc.initialResp.Header, string(readBodyBytesForTest(t, tc.initialResp)))
 			initialRespForRun.Request = initialReqForRun
 			initialBodyBytesForRun := readBodyBytesForTest(t, initialRespForRun)
 
-			// --- Execute ---
 			actualJSON, actualErr := HandlePagination(
 				mockClient,
 				initialReqForRun,
@@ -447,39 +409,37 @@ func TestHandleOffsetOrPagePagination(t *testing.T) {
 				logging.GetLevel(),
 			)
 
-			// --- Assert ---
 			if tc.expectError {
 				require.Error(t, actualErr)
 				if tc.errorContains != "" {
 					assert.Contains(t, actualErr.Error(), tc.errorContains)
 				}
 				if tc.expectedJSON != "" {
-					assert.JSONEq(t, tc.expectedJSON, actualJSON, "Partial JSON results mismatch on error")
+					assert.JSONEq(t, tc.expectedJSON, actualJSON)
 				}
 			} else {
 				require.NoError(t, actualErr)
-				assert.JSONEq(t, tc.expectedJSON, actualJSON, "Final JSON results mismatch")
+				assert.JSONEq(t, tc.expectedJSON, actualJSON)
 			}
 
-			// Verify the subsequent requests made
-			mockTransport, ok := mockClient.Transport.(*mockRoundTripper) // Retrieve transport from client
-			require.True(t, ok, "Could not get mockRoundTripper from client")
-			require.Equal(t, len(tc.expectedReqDetails), len(mockTransport.requests), "Mismatch in expected number of subsequent requests made")
+			mockTransport, ok := mockClient.Transport.(*mockRoundTripper)
+			require.True(t, ok)
+			require.Equal(t, len(tc.expectedReqDetails), len(mockTransport.requests))
 
 			for i, expectedDetail := range tc.expectedReqDetails {
 				require.Less(t, i, len(mockTransport.requests))
 				actualReq := mockTransport.requests[i]
-				assert.Equal(t, expectedDetail.Method, actualReq.Method, "Request #%d: Method mismatch", i+1)
-				assert.Equal(t, expectedDetail.URL, actualReq.URL.String(), "Request #%d: URL mismatch", i+1)
+				assert.Equal(t, expectedDetail.Method, actualReq.Method)
+				assert.Equal(t, expectedDetail.URL, actualReq.URL.String())
 				if expectedDetail.BodyJSON != "" {
 					actualBodyBytes := readBodyBytesForTest(t, actualReq)
-					assert.JSONEq(t, expectedDetail.BodyJSON, string(actualBodyBytes), "Request #%d: Body JSON mismatch", i+1)
+					assert.JSONEq(t, expectedDetail.BodyJSON, string(actualBodyBytes))
 				} else {
 					if actualReq.Body != nil {
 						actualBodyBytes := readBodyBytesForTest(t, actualReq)
-						assert.Empty(t, actualBodyBytes, "Request #%d: Expected no body, but found one with content", i+1)
+						assert.Empty(t, actualBodyBytes)
 					} else {
-						assert.Nil(t, actualReq.Body, "Request #%d: Expected no body, but found one", i+1)
+						assert.Nil(t, actualReq.Body)
 					}
 				}
 			}
@@ -494,7 +454,7 @@ func TestHandleCursorPagination(t *testing.T) {
 
 	testCases := []struct {
 		name               string
-		pagCfg             config.PaginationConfig // Value type here
+		pagCfg             config.PaginationConfig
 		initialReq         *http.Request
 		initialResp        *http.Response
 		mockResponses      []*http.Response
@@ -510,19 +470,19 @@ func TestHandleCursorPagination(t *testing.T) {
 			pagCfg: config.PaginationConfig{
 				Type:         "cursor",
 				ResultsField: "data",
-				NextField:    "paging.nextCursor", // gjson path to cursor in response body
+				NextField:    "paging.nextCursor",
 			},
 			initialReq:  newInitialTestRequest("GET", "http://test.com/data", ""),
 			initialResp: newMockResponse(200, nil, `{"data": [1.0], "paging": {"nextCursor": "cursorA"}}`),
 			mockResponses: []*http.Response{
 				newMockResponse(200, nil, `{"data": [3.0], "paging": {"nextCursor": "cursorB"}}`),
-				newMockResponse(200, nil, `{"data": [5.0], "paging": {}}`), // No nextCursor means stop
+				newMockResponse(200, nil, `{"data": [5.0], "paging": {}}`),
 			},
 			authType:     "none",
 			expectedJSON: `[1.0,3.0,5.0]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/data?cursor=cursorA"}, // Default cursor param name
+				{Method: "GET", URL: "http://test.com/data?cursor=cursorA"},
 				{Method: "GET", URL: "http://test.com/data?cursor=cursorB"},
 			},
 		},
@@ -531,14 +491,14 @@ func TestHandleCursorPagination(t *testing.T) {
 			pagCfg: config.PaginationConfig{
 				Type:         "cursor",
 				ResultsField: "results",
-				NextHeader:   "X-Next-Token", // Cursor is in this header
-				CursorParam: "next_token", // Custom query parameter name
+				NextHeader:   "X-Next-Token",
+				CursorParam:  "next_token",
 			},
 			initialReq:  newInitialTestRequest("GET", "http://test.com/results", ""),
 			initialResp: newMockResponse(200, http.Header{"X-Next-Token": {"tok1"}}, `{"results": ["a"]}`),
 			mockResponses: []*http.Response{
 				newMockResponse(200, http.Header{"X-Next-Token": {"tok2"}}, `{"results": ["b"]}`),
-				newMockResponse(200, http.Header{}, `{"results": ["c"]}`), // No header means stop
+				newMockResponse(200, http.Header{}, `{"results": ["c"]}`),
 			},
 			authType:     "none",
 			expectedJSON: `["a","b","c"]`,
@@ -553,21 +513,21 @@ func TestHandleCursorPagination(t *testing.T) {
 			pagCfg: config.PaginationConfig{
 				Type:            "cursor",
 				ResultsField:    "values",
-				NextField:       "nextLink", // Cursor is the value of this field
-				CursorUsageMode: "url",      // Treat the cursor as the next URL
+				NextField:       "nextLink",
+				CursorUsageMode: "url",
 			},
 			initialReq:  newInitialTestRequest("GET", "http://base.com/api/v1/stuff", ""),
 			initialResp: newMockResponse(200, nil, `{"values": [10], "nextLink": "http://base.com/api/v1/stuff?page=2"}`),
 			mockResponses: []*http.Response{
-				newMockResponse(200, nil, `{"values": [20], "nextLink": "/api/v1/stuff?page=3"}`), // Relative URL
-				newMockResponse(200, nil, `{"values": [30], "nextLink": null}`),                  // Null nextLink means stop
+				newMockResponse(200, nil, `{"values": [20], "nextLink": "/api/v1/stuff?page=3"}`),
+				newMockResponse(200, nil, `{"values": [30], "nextLink": null}`),
 			},
 			authType:     "none",
 			expectedJSON: `[10,20,30]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://base.com/api/v1/stuff?page=2"}, // Absolute URL used
-				{Method: "GET", URL: "http://base.com/api/v1/stuff?page=3"}, // Relative URL resolved correctly
+				{Method: "GET", URL: "http://base.com/api/v1/stuff?page=2"},
+				{Method: "GET", URL: "http://base.com/api/v1/stuff?page=3"},
 			},
 		},
 		{
@@ -576,15 +536,15 @@ func TestHandleCursorPagination(t *testing.T) {
 				Type:            "cursor",
 				ResultsField:    "items",
 				NextField:       "nextToken",
-				CursorUsageMode: "body",       // Put cursor back in the body
-				CursorParam:     "pageToken",  // Name of the field for the cursor in the *next* request body
-				BodyPath:        "pagingInfo", // Put pageToken inside this nested object
+				CursorUsageMode: "body",
+				CursorParam:     "pageToken",
+				BodyPath:        "pagingInfo",
 			},
 			initialReq:  newInitialTestRequest("POST", "http://test.com/search", `{"query": "stuff", "pagingInfo": {}}`),
 			initialResp: newMockResponse(200, nil, `{"items": ["x"], "nextToken": "cursor1"}`),
 			mockResponses: []*http.Response{
 				newMockResponse(200, nil, `{"items": ["y"], "nextToken": "cursor2"}`),
-				newMockResponse(200, nil, `{"items": ["z"], "nextToken": null}`), // Null stops pagination
+				newMockResponse(200, nil, `{"items": ["z"], "nextToken": null}`),
 			},
 			authType:     "none",
 			expectedJSON: `["x","y","z"]`,
@@ -597,20 +557,20 @@ func TestHandleCursorPagination(t *testing.T) {
 		{
 			name: "Cursor Error on Page 2",
 			pagCfg: config.PaginationConfig{
-				Type:       "cursor",
+				Type:         "cursor",
 				ResultsField: "data",
-				NextField:  "paging.nextCursor",
+				NextField:    "paging.nextCursor",
 			},
 			initialReq:    newInitialTestRequest("GET", "http://test.com/data", ""),
 			initialResp:   newMockResponse(200, nil, `{"data": [1.0], "paging": {"nextCursor": "cursorA"}}`),
-			mockResponses: []*http.Response{}, // No successful response
+			mockResponses: []*http.Response{},
 			mockErrors:    []error{fmt.Errorf("internal server error")},
 			authType:      "none",
-			expectedJSON:  `[1.0]`, // Partial results
+			expectedJSON:  `[1.0]`,
 			expectError:   true,
 			errorContains: "internal server error",
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/data?cursor=cursorA"}, // Expect request for cursor A
+				{Method: "GET", URL: "http://test.com/data?cursor=cursorA"},
 			},
 		},
 		{
@@ -619,39 +579,36 @@ func TestHandleCursorPagination(t *testing.T) {
 				Type:         "cursor",
 				ResultsField: "data",
 				NextField:    "next",
-				MaxPages:     3, // Stop after fetching page index 0, 1, 2
+				MaxPages:     3,
 			},
 			initialReq:  newInitialTestRequest("GET", "http://test.com/data", ""),
-			initialResp: newMockResponse(200, nil, `{"data": [0], "next": "c1"}`), // Page 1 (idx 0)
+			initialResp: newMockResponse(200, nil, `{"data": [0], "next": "c1"}`),
 			mockResponses: []*http.Response{
-				newMockResponse(200, nil, `{"data": [1], "next": "c2"}`), // Page 2 (idx 1)
-				newMockResponse(200, nil, `{"data": [2], "next": "c3"}`), // Page 3 (idx 2) - Should be fetched
+				newMockResponse(200, nil, `{"data": [1], "next": "c2"}`),
+				newMockResponse(200, nil, `{"data": [2], "next": "c3"}`),
 			},
 			authType:     "none",
-			expectedJSON: `[0,1,2]`, // Results from first 3 pages
+			expectedJSON: `[0,1,2]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://test.com/data?cursor=c1"}, // Request page 2
-				{Method: "GET", URL: "http://test.com/data?cursor=c2"}, // Request page 3
+				{Method: "GET", URL: "http://test.com/data?cursor=c1"},
+				{Method: "GET", URL: "http://test.com/data?cursor=c2"},
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// --- Setup ---
 			endpointCfg := config.EndpointConfig{Pagination: &tc.pagCfg}
-			// Correctly assign both return values, ignore transport if not needed immediately
-			mockClient, _ := newMockClient(t, tc.mockResponses, tc.mockErrors) // <-- Corrected Assignment
+			mockClient, _ := newMockClient(t, tc.mockResponses, tc.mockErrors)
 			dummyCreds := map[string]string{}
 			dummyRetry := config.RetryConfig{MaxAttempts: 1}
 
 			initialReqForRun, err := copyRequest(tc.initialReq)
-			require.NoError(t, err, "Failed to copy initial request for run")
+			require.NoError(t, err)
 			initialRespForRun := newMockResponse(tc.initialResp.StatusCode, tc.initialResp.Header, string(readBodyBytesForTest(t, tc.initialResp)))
 			initialRespForRun.Request = initialReqForRun
 			initialBodyBytesForRun := readBodyBytesForTest(t, initialRespForRun)
 
-			// --- Execute ---
 			actualJSON, actualErr := HandlePagination(
 				mockClient,
 				initialReqForRun,
@@ -664,38 +621,37 @@ func TestHandleCursorPagination(t *testing.T) {
 				logging.GetLevel(),
 			)
 
-			// --- Assert ---
 			if tc.expectError {
 				require.Error(t, actualErr)
 				if tc.errorContains != "" {
 					assert.Contains(t, actualErr.Error(), tc.errorContains)
 				}
 				if tc.expectedJSON != "" {
-					assert.JSONEq(t, tc.expectedJSON, actualJSON, "Partial JSON results mismatch on error")
+					assert.JSONEq(t, tc.expectedJSON, actualJSON)
 				}
 			} else {
 				require.NoError(t, actualErr)
-				assert.JSONEq(t, tc.expectedJSON, actualJSON, "Final JSON results mismatch")
+				assert.JSONEq(t, tc.expectedJSON, actualJSON)
 			}
 
-			mockTransport, ok := mockClient.Transport.(*mockRoundTripper) // Retrieve transport from client
-			require.True(t, ok, "Could not get mockRoundTripper from client")
-			require.Equal(t, len(tc.expectedReqDetails), len(mockTransport.requests), "Mismatch in expected number of subsequent requests made")
+			mockTransport, ok := mockClient.Transport.(*mockRoundTripper)
+			require.True(t, ok)
+			require.Equal(t, len(tc.expectedReqDetails), len(mockTransport.requests))
 
 			for i, expectedDetail := range tc.expectedReqDetails {
 				require.Less(t, i, len(mockTransport.requests))
 				actualReq := mockTransport.requests[i]
-				assert.Equal(t, expectedDetail.Method, actualReq.Method, "Request #%d: Method mismatch", i+1)
-				assert.Equal(t, expectedDetail.URL, actualReq.URL.String(), "Request #%d: URL mismatch", i+1)
+				assert.Equal(t, expectedDetail.Method, actualReq.Method)
+				assert.Equal(t, expectedDetail.URL, actualReq.URL.String())
 				if expectedDetail.BodyJSON != "" {
 					actualBodyBytes := readBodyBytesForTest(t, actualReq)
-					assert.JSONEq(t, expectedDetail.BodyJSON, string(actualBodyBytes), "Request #%d: Body JSON mismatch", i+1)
+					assert.JSONEq(t, expectedDetail.BodyJSON, string(actualBodyBytes))
 				} else {
 					if actualReq.Body != nil {
 						actualBodyBytes := readBodyBytesForTest(t, actualReq)
-						assert.Empty(t, actualBodyBytes, "Request #%d: Expected no body, but found one with content", i+1)
+						assert.Empty(t, actualBodyBytes)
 					} else {
-						assert.Nil(t, actualReq.Body, "Request #%d: Expected no body, but found one", i+1)
+						assert.Nil(t, actualReq.Body)
 					}
 				}
 			}
@@ -710,7 +666,7 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 
 	testCases := []struct {
 		name               string
-		pagCfg             config.PaginationConfig // Value type here
+		pagCfg             config.PaginationConfig
 		initialReq         *http.Request
 		initialResp        *http.Response
 		mockResponses      []*http.Response
@@ -731,7 +687,7 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 			initialResp: newMockResponse(200, http.Header{"Link": {`<http://api.example.com/items?page=2>; rel="next"`}}, `{"items": [1.0]}`),
 			mockResponses: []*http.Response{
 				newMockResponse(200, http.Header{"Link": {`<http://api.example.com/items?page=3>; rel="next"`}}, `{"items": [2.0]}`),
-				newMockResponse(200, http.Header{}, `{"items": [3.0]}`), // No Link header stops pagination
+				newMockResponse(200, http.Header{}, `{"items": [3.0]}`),
 			},
 			authType:     "none",
 			expectedJSON: `[1.0,2.0,3.0]`,
@@ -750,7 +706,7 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 			initialReq:  newInitialTestRequest("GET", "http://api.example.com/data", ""),
 			initialResp: newMockResponse(200, http.Header{"Link": {`<http://api.example.com/data?p=1>; rel="first", <http://api.example.com/data?p=2>; rel="next"`}}, `{"data": ["a"]}`),
 			mockResponses: []*http.Response{
-				newMockResponse(200, http.Header{"Link": {`<http://api.example.com/data?p=1>; rel="prev", <http://api.example.com/data?p=2>; rel="first"`}}, `{"data": ["b"]}`), // No next link
+				newMockResponse(200, http.Header{"Link": {`<http://api.example.com/data?p=1>; rel="prev", <http://api.example.com/data?p=2>; rel="first"`}}, `{"data": ["b"]}`),
 			},
 			authType:     "none",
 			expectedJSON: `["a","b"]`,
@@ -766,15 +722,15 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 				ResultsField: "records",
 			},
 			initialReq:  newInitialTestRequest("GET", "http://api.example.com/v2/records", ""),
-			initialResp: newMockResponse(200, http.Header{"Link": {`</v2/records?cursor=abc>; rel="next"`}}, `{"records": [1.0]}`), // Relative link
+			initialResp: newMockResponse(200, http.Header{"Link": {`</v2/records?cursor=abc>; rel="next"`}}, `{"records": [1.0]}`),
 			mockResponses: []*http.Response{
-				newMockResponse(200, http.Header{}, `{"records": [2.0]}`), // No link stops
+				newMockResponse(200, http.Header{}, `{"records": [2.0]}`),
 			},
 			authType:     "none",
 			expectedJSON: `[1.0,2.0]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://api.example.com/v2/records?cursor=abc"}, // Correctly resolved
+				{Method: "GET", URL: "http://api.example.com/v2/records?cursor=abc"},
 			},
 		},
 		{
@@ -788,11 +744,11 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 			mockResponses: []*http.Response{},
 			mockErrors:    []error{fmt.Errorf("access denied")},
 			authType:      "none",
-			expectedJSON:  `[1.0]`, // Partial result
+			expectedJSON:  `[1.0]`,
 			expectError:   true,
 			errorContains: "access denied",
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://api.example.com/items?page=2"}, // The failed request
+				{Method: "GET", URL: "http://api.example.com/items?page=2"},
 			},
 		},
 		{
@@ -800,37 +756,34 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 			pagCfg: config.PaginationConfig{
 				Type:         "link_header",
 				ResultsField: "items",
-				MaxPages:     2, // Stop after fetching page 0 and 1
+				MaxPages:     2,
 			},
 			initialReq:  newInitialTestRequest("GET", "http://api.example.com/items", ""),
-			initialResp: newMockResponse(200, http.Header{"Link": {`</items?page=2>; rel="next"`}}, `{"items": [0]}`), // Page 1 (idx 0)
+			initialResp: newMockResponse(200, http.Header{"Link": {`</items?page=2>; rel="next"`}}, `{"items": [0]}`),
 			mockResponses: []*http.Response{
-				newMockResponse(200, http.Header{"Link": {`</items?page=3>; rel="next"`}}, `{"items": [1]}`), // Page 2 (idx 1) - Fetched
+				newMockResponse(200, http.Header{"Link": {`</items?page=3>; rel="next"`}}, `{"items": [1]}`),
 			},
 			authType:     "none",
-			expectedJSON: `[0, 1]`, // Only results from first 2 pages
+			expectedJSON: `[0, 1]`,
 			expectError:  false,
 			expectedReqDetails: []expectedRequestDetail{
-				{Method: "GET", URL: "http://api.example.com/items?page=2"}, // Request page 2
+				{Method: "GET", URL: "http://api.example.com/items?page=2"},
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// --- Setup ---
 			endpointCfg := config.EndpointConfig{Pagination: &tc.pagCfg}
-			// Correctly assign both return values, ignore transport if not needed immediately
-			mockClient, _ := newMockClient(t, tc.mockResponses, tc.mockErrors) // <-- Corrected Assignment
+			mockClient, _ := newMockClient(t, tc.mockResponses, tc.mockErrors)
 			dummyCreds := map[string]string{}
 			dummyRetry := config.RetryConfig{MaxAttempts: 1}
 
 			initialReqForRun, err := copyRequest(tc.initialReq)
-			require.NoError(t, err, "Failed to copy initial request for run")
+			require.NoError(t, err)
 			initialRespForRun := newMockResponse(tc.initialResp.StatusCode, tc.initialResp.Header, string(readBodyBytesForTest(t, tc.initialResp)))
 			initialRespForRun.Request = initialReqForRun
 			initialBodyBytesForRun := readBodyBytesForTest(t, initialRespForRun)
 
-			// --- Execute ---
 			actualJSON, actualErr := HandlePagination(
 				mockClient,
 				initialReqForRun,
@@ -843,35 +796,33 @@ func TestHandleLinkHeaderPagination(t *testing.T) {
 				logging.GetLevel(),
 			)
 
-			// --- Assert ---
 			if tc.expectError {
 				require.Error(t, actualErr)
 				if tc.errorContains != "" {
 					assert.Contains(t, actualErr.Error(), tc.errorContains)
 				}
 				if tc.expectedJSON != "" {
-					assert.JSONEq(t, tc.expectedJSON, actualJSON, "Partial JSON results mismatch on error")
+					assert.JSONEq(t, tc.expectedJSON, actualJSON)
 				}
 			} else {
 				require.NoError(t, actualErr)
-				assert.JSONEq(t, tc.expectedJSON, actualJSON, "Final JSON results mismatch")
+				assert.JSONEq(t, tc.expectedJSON, actualJSON)
 			}
 
-			mockTransport, ok := mockClient.Transport.(*mockRoundTripper) // Retrieve transport from client
-			require.True(t, ok, "Could not get mockRoundTripper from client")
-			require.Equal(t, len(tc.expectedReqDetails), len(mockTransport.requests), "Mismatch in expected number of subsequent requests made")
+			mockTransport, ok := mockClient.Transport.(*mockRoundTripper)
+			require.True(t, ok)
+			require.Equal(t, len(tc.expectedReqDetails), len(mockTransport.requests))
 
 			for i, expectedDetail := range tc.expectedReqDetails {
 				require.Less(t, i, len(mockTransport.requests))
 				actualReq := mockTransport.requests[i]
-				assert.Equal(t, expectedDetail.Method, actualReq.Method, "Request #%d: Method mismatch", i+1)
-				assert.Equal(t, expectedDetail.URL, actualReq.URL.String(), "Request #%d: URL mismatch", i+1)
-				// Link header pagination usually implies GET with no body
+				assert.Equal(t, expectedDetail.Method, actualReq.Method)
+				assert.Equal(t, expectedDetail.URL, actualReq.URL.String())
 				if actualReq.Body != nil {
 					actualBodyBytes := readBodyBytesForTest(t, actualReq)
-					assert.Empty(t, actualBodyBytes, "Request #%d: Expected no body for Link header request, but found content", i+1)
+					assert.Empty(t, actualBodyBytes)
 				} else {
-					assert.Nil(t, actualReq.Body, "Request #%d: Expected no body for Link header request", i+1)
+					assert.Nil(t, actualReq.Body)
 				}
 			}
 		})
@@ -889,7 +840,7 @@ func TestParseLinkHeader(t *testing.T) {
 		{name: "Simple Next Link", headers: http.Header{"Link": {`<http://test.com/page=2>; rel="next"`}}, expectedURL: "http://test.com/page=2", expectedFound: true},
 		{name: "Multiple Links Including Next", headers: http.Header{"Link": {`<http://test.com/page=1>; rel="first", <http://test.com/page=3>; rel="next", <http://test.com/page=10>; rel="last"`}}, expectedURL: "http://test.com/page=3", expectedFound: true},
 		{name: "Multiple Link Headers", headers: http.Header{"Link": {`<http://test.com/page=1>; rel="first"`, `<http://test.com/page=2>; rel="next"`}}, expectedURL: "http://test.com/page=2", expectedFound: true},
-		{name: "Link with different rel types (should ignore)", headers: http.Header{"Link": {`<http://test.com/prev>; rel="previous", <http://test.com/next>; rel="next page"`}}, expectedURL: "", expectedFound: false}, // "next page" is not "next"
+		{name: "Link with different rel types (should ignore)", headers: http.Header{"Link": {`<http://test.com/prev>; rel="previous", <http://test.com/next>; rel="next page"`}}, expectedURL: "", expectedFound: false},
 		{name: "No next link present", headers: http.Header{"Link": {`<http://test.com/page=10>; rel="last"`}}, expectedURL: "", expectedFound: false},
 		{name: "Link with quotes around rel", headers: http.Header{"Link": {`<https://api.example.com/items?page=2>; rel="next"`}}, expectedURL: "https://api.example.com/items?page=2", expectedFound: true},
 		{name: "Link without quotes around known rel (should still parse)", headers: http.Header{"Link": {`<https://api.example.com/items?page=2>; rel=next`}}, expectedURL: "https://api.example.com/items?page=2", expectedFound: true},
@@ -921,8 +872,8 @@ func TestMakeAbsoluteURL(t *testing.T) {
 		{"Empty Next URL", baseURL, "", "http://base.com/api/v1/", false},
 		{"Invalid Next URL Syntax", baseURL, ":invalid:", "", true},
 		{"Base URL with Path", baseURL, "endpoint", "http://base.com/api/v1/endpoint", false},
-		{"Base URL ends no slash", func() *url.URL { u, _ := url.Parse("http://noslash.com/api"); return u }(), "path", "http://noslash.com/path", false}, // ResolveReference handles this
-		{"Nil Base URL", nil, "/relative/path", "/relative/path", false},                                                                                         // Relative path with nil base remains relative
+		{"Base URL ends no slash", func() *url.URL { u, _ := url.Parse("http://noslash.com/api"); return u }(), "path", "http://noslash.com/path", false},
+		{"Nil Base URL", nil, "/relative/path", "/relative/path", false},
 		{"Nil Base URL, Absolute Next", nil, "https://absolute.com", "https://absolute.com", false},
 	}
 	for _, tc := range testCases {
@@ -940,48 +891,44 @@ func TestMakeAbsoluteURL(t *testing.T) {
 
 func TestFindOrCreateTargetPath(t *testing.T) {
 	originalLogLevel := logging.GetLevel()
-	logging.SetLevel(logging.Debug) // Ensure debug logs if needed
+	logging.SetLevel(logging.Debug)
 	defer logging.SetLevel(originalLogLevel)
 
 	testCases := []struct {
 		name              string
 		initialData       map[string]interface{}
 		path              string
-		expectedMapJSON   string // Expected JSON of the *returned target map*
-		expectedFinalData string // Expected JSON of the *entire modified* data structure
+		expectedMapJSON   string
+		expectedFinalData string
 		expectError       bool
-		modifyAction      func(targetMap map[string]interface{}, t *testing.T) // Action to perform on returned map
-		expectedErrorMsg  string                                                // Optional: Specific error message check
+		modifyAction      func(targetMap map[string]interface{}, t *testing.T)
+		expectedErrorMsg  string
 	}{
 		{
 			name:              "Empty Path",
 			initialData:       map[string]interface{}{"a": 1.0},
 			path:              "",
-			expectedMapJSON:   `{"a":1.0}`, // Returns root map
-			expectedFinalData: `{"a":1.0}`, // No change expected
+			expectedMapJSON:   `{"a":1.0}`,
+			expectedFinalData: `{"a":1.0}`,
 			expectError:       false,
 		},
 		{
 			name:        "Simple Path Exists - Get Target",
 			initialData: map[string]interface{}{"a": map[string]interface{}{"b": map[string]interface{}{"original": true}}},
-			path:        "a.b", // Path to the map 'b'
-			// Expect the map that exists at a.b *before* modification
+			path:        "a.b",
 			expectedMapJSON:   `{"original":true}`,
-			// Final state *after* test adds "c":3.0 into map 'b'
 			expectedFinalData: `{"a":{"b":{"original":true,"c":3.0}}}`,
 			expectError:       false,
 			modifyAction: func(targetMap map[string]interface{}, t *testing.T) {
 				require.NotNil(t, targetMap)
-				targetMap["c"] = 3.0 // Add 'c' into the returned map 'b'
+				targetMap["c"] = 3.0
 			},
 		},
 		{
 			name:        "Create Simple Path",
-			initialData: map[string]interface{}{}, // Start empty
+			initialData: map[string]interface{}{},
 			path:        "new.path",
-			// Expect newly created empty map at 'path'
 			expectedMapJSON:   `{}`,
-			// Final state after test adds "value":true to the new map
 			expectedFinalData: `{"new":{"path":{"value":true}}}`,
 			expectError:       false,
 			modifyAction: func(targetMap map[string]interface{}, t *testing.T) {
@@ -993,9 +940,7 @@ func TestFindOrCreateTargetPath(t *testing.T) {
 			name:        "Create Nested Path",
 			initialData: map[string]interface{}{"existing": "root"},
 			path:        "a.b.c",
-			// Expect newly created empty map at 'c'
 			expectedMapJSON:   `{}`,
-			// Final state after adding value to 'c'
 			expectedFinalData: `{"existing":"root","a":{"b":{"c":{"nestedValue":123}}}}`,
 			expectError:       false,
 			modifyAction: func(targetMap map[string]interface{}, t *testing.T) {
@@ -1006,14 +951,14 @@ func TestFindOrCreateTargetPath(t *testing.T) {
 		{
 			name:             "Path Collides with Non-Map (Intermediate)",
 			initialData:      map[string]interface{}{"a": "string", "b": 123},
-			path:             "a.b", // 'a' exists but is not a map
+			path:             "a.b",
 			expectError:      true,
 			expectedErrorMsg: "intermediate field 'a' in path 'a.b' is not a map",
 		},
 		{
 			name:             "Path Collides with Non-Map (Final)",
 			initialData:      map[string]interface{}{"a": map[string]interface{}{"b": 123}},
-			path:             "a.b", // 'b' exists but is not a map
+			path:             "a.b",
 			expectError:      true,
 			expectedErrorMsg: "field 'b' at end of path 'a.b' exists but is not a map",
 		},
@@ -1049,7 +994,6 @@ func TestFindOrCreateTargetPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Deep copy initial data to avoid modification across tests
 			dataCopy := make(map[string]interface{})
 			initialJSON, _ := json.Marshal(tc.initialData)
 			_ = json.Unmarshal(initialJSON, &dataCopy)
@@ -1066,18 +1010,173 @@ func TestFindOrCreateTargetPath(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, targetMap)
 
-				// Verify the returned map structure *before* modification
 				actualMapBytes, _ := json.Marshal(targetMap)
-				assert.JSONEq(t, tc.expectedMapJSON, string(actualMapBytes), "Returned target map structure mismatch")
+				assert.JSONEq(t, tc.expectedMapJSON, string(actualMapBytes))
 
-				// Perform modification if specified
 				if tc.modifyAction != nil {
 					tc.modifyAction(targetMap, t)
 				}
 
-				// Verify the final state of the *entire* data structure
 				finalDataBytes, _ := json.Marshal(dataCopy)
-				assert.JSONEq(t, tc.expectedFinalData, string(finalDataBytes), "Final data structure mismatch after modification")
+				assert.JSONEq(t, tc.expectedFinalData, string(finalDataBytes))
+			}
+		})
+	}
+}
+
+
+// TestModifyRequestForInitialPage tests the exported function for adding initial params.
+func TestModifyRequestForInitialPage(t *testing.T) {
+	originalLogLevel := logging.GetLevel()
+	logging.SetLevel(logging.Debug)
+	defer logging.SetLevel(originalLogLevel)
+
+	testCases := []struct {
+		name          string
+		pagCfg        config.PaginationConfig
+		initialReq    *http.Request
+		expectedURL   string
+		expectedBody  string // Expect JSON string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "Offset Type - Query Params",
+			pagCfg: config.PaginationConfig{
+				Type:        "offset",
+				Strategy:    "offset", // Explicitly offset
+				Limit:       10,
+				OffsetParam: "offset",
+				LimitParam:  "limit",
+			},
+			initialReq:  newInitialTestRequest("GET", "http://test.com/items?other=val", ""),
+			expectedURL: "http://test.com/items?limit=10&offset=0&other=val",
+			expectError: false,
+		},
+		{
+			name: "Page Type - Query Params",
+			pagCfg: config.PaginationConfig{
+				Type:      "page",
+				Strategy:  "page", // Explicitly page
+				Limit:     5,
+				StartPage: 1,
+				PageParam: "p",
+				SizeParam: "s",
+			},
+			initialReq:  newInitialTestRequest("GET", "http://test.com/data", ""),
+			expectedURL: "http://test.com/data?p=1&s=5",
+			expectError: false,
+		},
+		{
+			name: "Offset Type - Body Params - No Existing Body",
+			pagCfg: config.PaginationConfig{
+				Type:          "offset",
+				Strategy:      "offset",
+				Limit:         20,
+				OffsetParam:   "off",
+				LimitParam:    "lim",
+				ParamLocation: "body",
+				BodyPath:      "params",
+			},
+			initialReq:    newInitialTestRequest("POST", "http://test.com/search", ""), // No initial body
+			expectedURL:   "http://test.com/search",
+			expectedBody:  `{"params":{"lim":20,"off":0}}`, // Expect params nested under "params"
+			expectError:   false,
+		},
+		{
+			name: "Page Type - Body Params - Merge with Existing Body",
+			pagCfg: config.PaginationConfig{
+				Type:          "page",
+				Strategy:      "page",
+				Limit:         15,
+				StartPage:     2, // Start page 2
+				PageParam:     "page_num",
+				SizeParam:     "page_size",
+				ParamLocation: "body",
+				// No BodyPath means root level
+			},
+			initialReq:    newInitialTestRequest("POST", "http://test.com/query", `{"filter": "active", "sort": "name"}`), // Existing body
+			expectedURL:   "http://test.com/query",
+			expectedBody:  `{"filter":"active","page_num":2,"page_size":15,"sort":"name"}`, // Merged params
+			expectError:   false,
+		},
+		{
+			name: "Invalid Type (Cursor)",
+			pagCfg: config.PaginationConfig{
+				Type: "cursor", // Wrong type for this function
+			},
+			initialReq:  newInitialTestRequest("GET", "http://test.com/items", ""),
+			expectError: true,
+			errorContains: "only supports offset/page types",
+		},
+		{
+			name: "Body Params - Invalid Body JSON",
+			pagCfg: config.PaginationConfig{
+				Type:          "offset",
+				Limit:         10,
+				ParamLocation: "body",
+			},
+			initialReq:    newInitialTestRequest("POST", "http://test.com/items", `{"malformed":`), // Invalid JSON
+			expectError:   true,
+			errorContains: "failed parse request body JSON",
+		},
+		{
+			name: "Body Params - Invalid BodyPath",
+			pagCfg: config.PaginationConfig{
+				Type:          "offset",
+				Limit:         10,
+				ParamLocation: "body",
+				BodyPath:      "a..b", // Invalid path
+			},
+			initialReq:    newInitialTestRequest("POST", "http://test.com/items", `{}`),
+			expectError:   true,
+			errorContains: "path cannot contain empty segments",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reqCopy, err := copyRequest(tc.initialReq) // Work on a copy
+			require.NoError(t, err, "Failed to copy request")
+
+			err = ModifyRequestForInitialPage(&tc.pagCfg, reqCopy)
+
+			if tc.expectError {
+				require.Error(t, err)
+				if tc.errorContains != "" {
+					assert.Contains(t, err.Error(), tc.errorContains)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedURL, reqCopy.URL.String(), "URL mismatch")
+
+				if tc.pagCfg.ParamLocation == "body" {
+					require.NotNil(t, reqCopy.Body, "Request body should not be nil")
+					actualBodyBytes, readErr := io.ReadAll(reqCopy.Body)
+					reqCopy.Body.Close() // Close the read body
+					require.NoError(t, readErr)
+					assert.JSONEq(t, tc.expectedBody, string(actualBodyBytes), "Request body JSON mismatch")
+					// Verify GetBody was set correctly
+					require.NotNil(t, reqCopy.GetBody, "GetBody should be set after body modification")
+					gbReader, gbErr := reqCopy.GetBody()
+					require.NoError(t, gbErr)
+					gbBytes, gbReadErr := io.ReadAll(gbReader)
+					gbReader.Close()
+					require.NoError(t, gbReadErr)
+					assert.JSONEq(t, tc.expectedBody, string(gbBytes), "GetBody content mismatch")
+
+				} else {
+					// For query params, body should be unchanged
+					if tc.initialReq.Body != nil {
+						initialBodyBytes, _ := io.ReadAll(tc.initialReq.Body)
+						tc.initialReq.Body = io.NopCloser(bytes.NewReader(initialBodyBytes)) // Reset original
+						actualBodyBytes, _ := io.ReadAll(reqCopy.Body)
+						reqCopy.Body = io.NopCloser(bytes.NewReader(actualBodyBytes)) // Reset copy
+						assert.Equal(t, initialBodyBytes, actualBodyBytes, "Body should not change for query params")
+					} else {
+						assert.Nil(t, reqCopy.Body, "Body should remain nil for query params")
+					}
+				}
 			}
 		})
 	}

@@ -30,12 +30,13 @@ type LoggingConfig struct {
 
 // APIConfig defines a single API's configuration.
 type APIConfig struct {
-	BaseURL       string                    `yaml:"base_url"`
-	AuthType      string                    `yaml:"auth_type"`
-	TlsSkipVerify bool                      `yaml:"tls_skip_verify,omitempty"`
-	ForceHTTP1    bool                      `yaml:"force_http1,omitempty"`
-	CookieJar     bool                      `yaml:"cookie_jar,omitempty"`
-	Endpoints     map[string]EndpointConfig `yaml:"endpoints"`
+	BaseURL        string                    `yaml:"base_url"`
+	AuthType       string                    `yaml:"auth_type,omitempty"`
+	TlsSkipVerify  bool                      `yaml:"tls_skip_verify,omitempty"`
+	ForceHTTP1     bool                      `yaml:"force_http1,omitempty"`
+	CookieJar      bool                      `yaml:"cookie_jar,omitempty"`
+	TimeoutSeconds int                       `yaml:"timeout_seconds,omitempty"` // New: API-specific timeout
+	Endpoints      map[string]EndpointConfig `yaml:"endpoints"`
 }
 
 // EndpointConfig defines an endpoint's details.
@@ -47,11 +48,12 @@ type EndpointConfig struct {
 
 // PaginationConfig holds the flexible pagination settings.
 type PaginationConfig struct {
-	Type          string `yaml:"type"`
-	ParamLocation string `yaml:"param_location,omitempty"`
-	BodyPath      string `yaml:"body_path,omitempty"`
-	ResultsField  string `yaml:"results_field,omitempty"`
-	MaxPages      int    `yaml:"max_pages,omitempty"`
+	Type                         string `yaml:"type"`
+	ParamLocation                string `yaml:"param_location,omitempty"`
+	BodyPath                     string `yaml:"body_path,omitempty"`
+	ResultsField                 string `yaml:"results_field,omitempty"`
+	ForceInitialPaginationParams bool   `yaml:"force_initial_pagination_params,omitempty"` // New: Force params on first offset/page request
+	MaxPages                     int    `yaml:"max_pages,omitempty"`
 
 	// Offset/Page Specific Settings
 	Strategy    string `yaml:"strategy,omitempty"`

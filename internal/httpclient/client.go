@@ -24,10 +24,9 @@ import (
 const DefaultTimeout = 30 * time.Second
 
 // NewClient creates an *http.Client configured based on API and Auth settings.
-// Handles TLS verification skipping, NTLM, OAuth2 client credentials flow, Digest, and cookie jars.
+// Handles TLS verification skipping, NTLM, OAuth2 client credentials flow, Digest, API timeouts, and cookie jars.
 // `jar` argument allows providing a persistent cookie jar (e.g., for chains). If nil,
 // a temporary one is created if apiCfg.CookieJar is true, otherwise no jar is used.
-// <<< MODIFIED Signature: Added fipsMode parameter >>>
 func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.CookieJar, fipsMode bool) (*http.Client, error) {
 	// Determine effective auth type
 	effectiveAuthType := strings.ToLower(apiCfg.AuthType)
@@ -40,7 +39,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		// TODO: Configure proxy from environment or config?
 		// Proxy: http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: apiCfg.TlsSkipVerify,
+			InsecureSkipVerify: apiCfg.TlsSkipVerify, // Set based on API config
 		},
 		// Add reasonable defaults for timeouts, keep-alives etc.
 		DialContext: (&net.Dialer{
@@ -69,7 +68,6 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		logging.Logf(logging.Info, "FIPS Mode is ENABLED. Non-FIPS algorithms (e.g., MD5 Digest) will be disallowed.")
 	}
 
-
 	// Determine the final transport based on auth type
 	var finalTransport http.RoundTripper = baseTransport // Start with the base
 
@@ -79,8 +77,8 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		if authCfg == nil || authCfg.Credentials["username"] == "" || authCfg.Credentials["password"] == "" {
 			return nil, fmt.Errorf("ntlm authentication requires username and password in auth credentials")
 		}
-        // Ensure NTLM forces HTTP/1.1 if ForceHTTP1 is set
-        // The ForceHTTP1 logic above already modifies baseTransport, which ntlmssp wraps.
+		// Ensure NTLM forces HTTP/1.1 if ForceHTTP1 is set
+		// The ForceHTTP1 logic above already modifies baseTransport, which ntlmssp wraps.
 		finalTransport = ntlmssp.Negotiator{RoundTripper: baseTransport} // Wrap baseTransport
 
 	case "digest":
@@ -93,7 +91,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		finalTransport = &auth.DigestAuthRoundTripper{
 			Username: authCfg.Credentials["username"],
 			Password: authCfg.Credentials["password"],
-			FipsMode: fipsMode, // Pass the flag
+			FipsMode: fipsMode,      // Pass the flag
 			Next:     baseTransport, // Wrap baseTransport (which might be HTTP/1.1 forced)
 		}
 
@@ -104,7 +102,7 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 		if authCfg == nil {
 			return nil, fmt.Errorf("oauth2 configuration requires 'auth' section in config")
 		}
-		// Check FIPS mode for OAuth2 
+		// Check FIPS mode for OAuth2
 		if fipsMode {
 			// Check if Go's crypto libraries are FIPS compliant in this build/environment.
 			// This is complex and usually handled by build tags or OS-level settings.
@@ -128,16 +126,28 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 			// TODO: Add AuthStyle configuration?
 		}
 
-		// Configure the context with an HTTP client that uses our (potentially HTTP/1.1 forced) baseTransport
+		// Determine timeout for the context client
+		ctxClientTimeout := DefaultTimeout
+		// Use API-specific timeout if provided, otherwise default
+		if apiCfg.TimeoutSeconds > 0 {
+			ctxClientTimeout = time.Duration(apiCfg.TimeoutSeconds) * time.Second
+		}
+
+		// Configure the context with an HTTP client that uses our (potentially HTTP/1.1 forced) baseTransport and determined timeout
 		ctxClient := &http.Client{
 			Transport: baseTransport, // Use baseTransport here
-			Timeout:   DefaultTimeout, // Inherit timeout
+			Timeout:   ctxClientTimeout,
 			// Jar is handled below for the final oauthClient
 		}
 		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, ctxClient)
 
 		// Get the OAuth2-aware client. This client uses the ctxClient internally.
-		oauthClient := oauthConfig.Client(ctx)
+		oauthHTTPClient := oauthConfig.Client(ctx)
+
+		// Apply API-specific timeout to the final OAuth2 client (redundant?)
+		// The timeout applied to the ctxClient should be sufficient.
+		// However, setting it on the final client doesn't hurt.
+		oauthHTTPClient.Timeout = ctxClientTimeout
 
 		// Configure cookie jar for the *final* client
 		if apiCfg.CookieJar {
@@ -151,13 +161,13 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 			} else {
 				logging.Logf(logging.Debug, "Using provided persistent cookie jar for OAuth2 API: %s", apiCfg.BaseURL)
 			}
-			oauthClient.Jar = jar // Set the jar on the final OAuth2 client
+			oauthHTTPClient.Jar = jar // Set the jar on the final OAuth2 client
 		} else {
-			oauthClient.Jar = nil // Ensure no jar if not requested
+			oauthHTTPClient.Jar = nil // Ensure no jar if not requested
 		}
 
 		// Return the fully configured OAuth2 client directly
-		return oauthClient, nil
+		return oauthHTTPClient, nil
 
 	case "basic", "bearer", "api_key", "none", "":
 		// No special transport needed. Headers applied later.
@@ -168,8 +178,14 @@ func NewClient(apiCfg *config.APIConfig, authCfg *config.AuthConfig, jar http.Co
 	}
 
 	// --- Configure the final client for non-OAuth2 cases ---
+	clientTimeout := DefaultTimeout
+	if apiCfg.TimeoutSeconds > 0 {
+		clientTimeout = time.Duration(apiCfg.TimeoutSeconds) * time.Second
+		logging.Logf(logging.Debug, "Using API-specific timeout of %v for %s", clientTimeout, apiCfg.BaseURL)
+	}
+
 	client := &http.Client{
-		Timeout:   DefaultTimeout,
+		Timeout:   clientTimeout, // Use determined timeout
 		Transport: finalTransport, // Use the potentially wrapped (and potentially HTTP/1.1 forced) transport
 	}
 

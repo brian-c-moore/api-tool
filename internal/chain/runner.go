@@ -3,16 +3,22 @@ package chain
 import (
 	"bytes"
 	"context"
+	// "errors" // Removed unused import
 	"fmt"
 	"io"
 	"io/fs"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	// "sync" // Removed unused import
+	// "testing" // Removed unused import
+	// "time" // Removed unused import
 
+	// "api-tool/internal/app" // Removed unused import causing cycle
 	"api-tool/internal/auth"
 	"api-tool/internal/config"
 	"api-tool/internal/executor"
@@ -21,6 +27,11 @@ import (
 	"api-tool/internal/logging"
 	"api-tool/internal/template"
 	"api-tool/internal/util"
+
+	// Removed unused test imports
+	// "github.com/stretchr/testify/assert"
+	// "github.com/stretchr/testify/mock"
+	// "github.com/stretchr/testify/require"
 )
 
 // --- Interfaces for Dependencies ---
@@ -269,13 +280,24 @@ func (r *Runner) executeRequestStep(ctx context.Context, stepName string, step c
 	}
 
 	// Expand environment variables and render templates in URL path.
-	baseURLExpanded := util.ExpandEnvUniversal(apiConf.BaseURL)
+	baseURLStr := util.ExpandEnvUniversal(apiConf.BaseURL)
 	pathTemplateExpanded := util.ExpandEnvUniversal(endpointConf.Path)
-	fullPathTemplate := baseURLExpanded + pathTemplateExpanded
-	renderedURL, urlErr := template.Render("endpointPath_"+stepName, fullPathTemplate, r.state.GetAll())
+
+	// Robust URL joining
+	baseURL, urlErr := url.Parse(baseURLStr)
 	if urlErr != nil {
-		return fmt.Errorf("failed to render URL template '%s': %w", fullPathTemplate, urlErr)
+		return fmt.Errorf("failed to parse base URL '%s': %w", baseURLStr, urlErr)
 	}
+	// Render path template *before* parsing/resolving it
+	renderedPathTmpl, pathTmplErr := template.Render("endpointPath_"+stepName, pathTemplateExpanded, r.state.GetAll())
+	if pathTmplErr != nil {
+		return fmt.Errorf("failed to render endpoint path template '%s': %w", pathTemplateExpanded, pathTmplErr)
+	}
+	pathURL, urlErr := url.Parse(renderedPathTmpl) // Allows path to potentially be absolute
+	if urlErr != nil {
+		return fmt.Errorf("failed to parse rendered endpoint path '%s': %w", renderedPathTmpl, urlErr)
+	}
+	resolvedURL := baseURL.ResolveReference(pathURL).String()
 
 	// --- Prepare Request Body ---
 	var bodyReader io.Reader = nil        // The reader passed to http.NewRequest
@@ -418,7 +440,7 @@ func (r *Runner) executeRequestStep(ctx context.Context, stepName string, step c
 	}
 
 	// Create the HTTP request object.
-	req, reqErr := http.NewRequestWithContext(ctx, method, renderedURL, bodyReader)
+	req, reqErr := http.NewRequestWithContext(ctx, method, resolvedURL, bodyReader)
 	if reqErr != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", reqErr)
 	}
@@ -455,6 +477,24 @@ func (r *Runner) executeRequestStep(ctx context.Context, stepName string, step c
 	}
 	if authErr := auth.ApplyAuthHeaders(req, effectiveAuthType, credentials, apiToken); authErr != nil {
 		return fmt.Errorf("failed to apply authentication headers: %w", authErr)
+	}
+
+	// --- Apply Initial Pagination Params if Forced ---
+	paginationConfigured := endpointConf.Pagination != nil && (endpointConf.Pagination.Type == "offset" || endpointConf.Pagination.Type == "page")
+	if paginationConfigured && endpointConf.Pagination.ForceInitialPaginationParams {
+		pagCfgCopy := *endpointConf.Pagination
+		executor.ApplyPaginationDefaults(&pagCfgCopy, strings.ToLower(pagCfgCopy.Type)) // Ensure defaults applied
+
+		if pagCfgCopy.Type == "offset" || pagCfgCopy.Type == "page" {
+			logging.Logf(logging.Info, "Step '%s': Forcing initial pagination parameters for %s %s", stepName, req.Method, req.URL.String())
+			err := executor.ModifyRequestForInitialPage(&pagCfgCopy, req) // Pass config pointer
+			if err != nil {
+				return fmt.Errorf("step '%s': failed to apply initial pagination parameters: %w", stepName, err)
+			}
+			logging.Logf(logging.Debug, "Step '%s': Request modified for initial pagination params. New URL: %s", stepName, req.URL.String())
+			// Consider logging modified body snippet if applicable
+		}
+
 	}
 
 	// Select appropriate cookie jar (persistent or temporary).
@@ -526,7 +566,8 @@ func (r *Runner) executeRequestStep(ctx context.Context, stepName string, step c
 		var finalBodyString string
 		var pagErr error
 		// Check if pagination is configured for the endpoint.
-		if endpointConf.Pagination != nil && endpointConf.Pagination.Type != "" && endpointConf.Pagination.Type != "none" {
+		paginationConfigured = endpointConf.Pagination != nil && endpointConf.Pagination.Type != "" && endpointConf.Pagination.Type != "none" // Recheck type
+		if paginationConfigured {
 			paginationType := strings.ToLower(endpointConf.Pagination.Type)
 			logging.Logf(logging.Info, "Step '%s': Handling '%s' pagination...", stepName, paginationType)
 			// Call the executor's pagination handler.

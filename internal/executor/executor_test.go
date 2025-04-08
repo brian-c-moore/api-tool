@@ -1,4 +1,3 @@
-// internal/executor/executor_test.go
 package executor
 
 import (
@@ -19,7 +18,6 @@ import (
 // --- Mocking Infrastructure ---
 // NOTE: Mocks (mockRoundTripper, newMockClient, newMockResponse) are defined
 // in pagination_test.go within the same package to avoid redeclaration.
-
 
 // --- Test Functions ---
 
@@ -48,17 +46,17 @@ func TestExecuteRequest_RetryLogic(t *testing.T) {
 	DefaultSleep = mockSleep
 
 	tests := []struct {
-		name              string
-		retryCfg          config.RetryConfig
-		mockResponses     []*http.Response
-		mockErrors        []error
-		body              string
-		expectedStatus    int
-		expectedBody      string
-		expectError       bool
-		errorContains     string
-		expectedAttempts  int
-		expectedSleeps    []time.Duration // Use empty slice {} for no expected sleeps
+		name             string
+		retryCfg         config.RetryConfig
+		mockResponses    []*http.Response
+		mockErrors       []error
+		body             string
+		expectedStatus   int
+		expectedBody     string
+		expectError      bool
+		errorContains    string
+		expectedAttempts int
+		expectedSleeps   []time.Duration // Use empty slice {} for no expected sleeps
 	}{
 		{
 			name:             "Success First Try",
@@ -225,7 +223,6 @@ func TestExecuteRequest_RetryLogic(t *testing.T) {
 		})
 	}
 }
-
 
 func TestExtractHeaderValue(t *testing.T) {
 	resp := &http.Response{

@@ -37,7 +37,7 @@ func HandlePagination(
 		return string(initialBodyBytes), nil
 	}
 
-	// Work on a copy to apply defaults without modifying the original endpoint config.
+	// Work on a copy to apply defaults without modifying the original endpoint config pointer.
 	pagCfgCopy := *endpointCfg.Pagination
 	pagCfg := &pagCfgCopy // Use pointer for applying defaults.
 
@@ -45,7 +45,7 @@ func HandlePagination(
 	logging.Logf(logging.Info, "Pagination type '%s' detected. Starting pagination handling...", pagType)
 
 	// Apply defaults and validate the configuration before proceeding.
-	applyPaginationDefaults(pagCfg, pagType)
+	ApplyPaginationDefaults(pagCfg, pagType) // Exported function
 	if err := validatePaginationConfig(pagCfg, pagType); err != nil {
 		return string(initialBodyBytes), fmt.Errorf("invalid pagination configuration: %w", err)
 	}
@@ -82,8 +82,8 @@ func HandlePagination(
 	return mergedResultsJSON, nil
 }
 
-// applyPaginationDefaults sets default values for common pagination parameters.
-func applyPaginationDefaults(pagCfg *config.PaginationConfig, pagType string) {
+// ApplyPaginationDefaults sets default values for common pagination parameters. Exported for use by callers.
+func ApplyPaginationDefaults(pagCfg *config.PaginationConfig, pagType string) {
 	if pagCfg.ResultsField == "" {
 		pagCfg.ResultsField = "results"
 	}
@@ -94,9 +94,13 @@ func applyPaginationDefaults(pagCfg *config.PaginationConfig, pagType string) {
 
 	if pagType == "offset" || pagType == "page" {
 		pagCfg.Strategy = strings.ToLower(pagCfg.Strategy)
-		if pagCfg.Strategy != "offset" && pagCfg.Strategy != "page" {
-			pagCfg.Strategy = "offset"
-		} // Default to offset if invalid
+		if pagCfg.Strategy == "" {
+			pagCfg.Strategy = pagType // Default strategy to type if not specified
+		} else if pagCfg.Strategy != "offset" && pagCfg.Strategy != "page" {
+			logging.Logf(logging.Warning, "Invalid pagination strategy '%s', defaulting to '%s'", pagCfg.Strategy, pagType)
+			pagCfg.Strategy = pagType // Default to type if strategy is invalid
+		}
+
 		if pagCfg.Strategy == "offset" {
 			if pagCfg.OffsetParam == "" {
 				pagCfg.OffsetParam = "offset"
@@ -114,6 +118,10 @@ func applyPaginationDefaults(pagCfg *config.PaginationConfig, pagType string) {
 			// If LimitParam wasn't set, default it to SizeParam for consistency in helpers
 			if pagCfg.LimitParam == "" {
 				pagCfg.LimitParam = pagCfg.SizeParam
+			}
+			// Ensure SizeParam is set if it was empty and LimitParam was provided
+			if pagCfg.SizeParam == "" && pagCfg.LimitParam != "" {
+				pagCfg.SizeParam = pagCfg.LimitParam
 			}
 			if pagCfg.StartPage <= 0 {
 				pagCfg.StartPage = 1
@@ -255,20 +263,11 @@ func handleOffsetOrPagePagination(
 		offsetStr := strconv.Itoa(calculatedOffset)
 		limitStr := strconv.Itoa(pagCfg.Limit)
 		pageStr := strconv.Itoa(currentPageNum)
-		isGetMethod := (nextReq.Method == "GET" || nextReq.Method == "") // Treat empty method as GET
 
 		// Modify the request based on ParamLocation
 		if pagCfg.ParamLocation == "query" {
-			if !isGetMethod {
-				logging.Logf(logging.Warning, "Pagination: param_location is 'query' but method is '%s'. Parameters might not be applied correctly.", nextReq.Method)
-			}
-			// Pass config pointer to helper
 			err = modifyRequestQueryForOffsetPage(nextReq, pagCfg, offsetStr, limitStr, pageStr) // Pass pointer
 		} else if pagCfg.ParamLocation == "body" {
-			if isGetMethod {
-				logging.Logf(logging.Warning, "Pagination: param_location is 'body' but method is 'GET'. Body modification might be ignored by server.")
-			}
-			// Pass config pointer to helper
 			err = modifyRequestBodyForOffsetPage(nextReq, pagCfg, offsetStr, limitStr, pageStr) // Pass pointer
 		} else {
 			// Should be caught by validation, but log just in case.
@@ -794,6 +793,33 @@ func makeAbsoluteURL(originalURL *url.URL, nextURL string) (string, error) {
 	return originalURL.ResolveReference(parsedNext).String(), nil
 }
 
+// ModifyRequestForInitialPage adds pagination parameters to a request *before* it's sent for the first time.
+// This is used when `force_initial_pagination_params` is true.
+func ModifyRequestForInitialPage(pagCfg *config.PaginationConfig, req *http.Request) error {
+	if pagCfg.Type != "offset" && pagCfg.Type != "page" {
+		return fmt.Errorf("ModifyRequestForInitialPage only supports offset/page types, got %s", pagCfg.Type)
+	}
+
+	// Use correct initial values: offset=0, page=StartPage
+	offsetStr := "0"
+	limitStr := strconv.Itoa(pagCfg.Limit)
+	pageStr := strconv.Itoa(pagCfg.StartPage)
+
+	// Apply defaults one more time just in case caller didn't
+	ApplyPaginationDefaults(pagCfg, pagCfg.Type)
+
+	var err error
+	if pagCfg.ParamLocation == "query" {
+		err = modifyRequestQueryForOffsetPage(req, pagCfg, offsetStr, limitStr, pageStr)
+	} else if pagCfg.ParamLocation == "body" {
+		err = modifyRequestBodyForOffsetPage(req, pagCfg, offsetStr, limitStr, pageStr)
+	} else {
+		err = fmt.Errorf("invalid param_location '%s' for initial page modification", pagCfg.ParamLocation)
+	}
+
+	return err
+}
+
 // findOrCreateTargetPath finds or creates the map *at the end* of the specified path.
 // Example: path "a.b.c" returns the map associated with key "c".
 // If the path is empty, it returns the original root map.
@@ -981,4 +1007,3 @@ func parseLinkHeader(headers http.Header) (string, bool) {
 	}
 	return "", false
 }
-

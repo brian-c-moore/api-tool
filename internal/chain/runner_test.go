@@ -17,10 +17,11 @@ import (
 	"testing"
 	"time"
 
+	// "api-tool/internal/app" // Removed unused import causing cycle
 	"api-tool/internal/config"
 	"api-tool/internal/logging"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert" // Test imports
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -306,7 +307,7 @@ func setupTestRunner(t *testing.T, cfg *config.Config) (*Runner, *mockHTTPClient
 
 // --- Helper Functions ---
 func createTestAPIConfig(baseURL string, epPath string) map[string]config.APIConfig {
-	return map[string]config.APIConfig{"testapi": {BaseURL: baseURL, AuthType: "none", Endpoints: map[string]config.EndpointConfig{"testep": {Path: epPath, Method: "POST"}, "getep": {Path: epPath, Method: "GET"}}}}
+	return map[string]config.APIConfig{"testapi": {BaseURL: baseURL, AuthType: "none", Endpoints: map[string]config.EndpointConfig{"testep": {Path: epPath, Method: "POST"}, "getep": {Path: epPath, Method: "GET"}, "pageep": {Path: epPath, Method: "GET", Pagination: &config.PaginationConfig{Type: "page", Limit: 5}}}}}
 }
 func createMockHttpResponse(statusCode int, headers http.Header, body string) *http.Response {
 	if headers == nil {
@@ -318,14 +319,14 @@ func createMockHttpResponse(statusCode int, headers http.Header, body string) *h
 // --- Tests ---
 
 func TestRunner_Run_SimpleRequestStep_NoRegression(t *testing.T) {
-	cfg := &config.Config{APIs: createTestAPIConfig("http://api.test", "/data"), Chain: &config.ChainConfig{Steps: []config.ChainStep{{Name: "fetch_data", Request: &config.ChainRequest{API: "testapi", Endpoint: "getep", Method: "GET", Data: `{"in": true}`}, Extract: map[string]string{"RESULT_BODY": "."}}}}, Retry: config.RetryConfig{MaxAttempts: 1}, Auth: config.AuthConfig{Default: "none"}, FipsMode: false}
+	cfg := &config.Config{APIs: createTestAPIConfig("http://api.test/", "data"), Chain: &config.ChainConfig{Steps: []config.ChainStep{{Name: "fetch_data", Request: &config.ChainRequest{API: "testapi", Endpoint: "getep", Method: "GET", Data: `{"in": true}`}, Extract: map[string]string{"RESULT_BODY": "."}}}}, Retry: config.RetryConfig{MaxAttempts: 1}, Auth: config.AuthConfig{Default: "none"}, FipsMode: false}
 	runner, mockHTTP, mockExec, mockJQ, _, _ := setupTestRunner(t, cfg)
 	mockClient := &http.Client{}
 	mockResp := createMockHttpResponse(200, http.Header{"Content-Type": {"application/json"}}, `{"id": 123}`)
 	mockRespBodyBytes := []byte(`{"id": 123}`)
 	apiConf := cfg.APIs["testapi"]
 	mockHTTP.On("NewClient", &apiConf, &cfg.Auth, mock.Anything, cfg.FipsMode).Return(mockClient, nil).Once()
-	// Simplified matcher - just check URL/Method. Body checked post-run.
+	// Simplified matcher - check resolved URL/Method. Body checked post-run.
 	mockExec.On("ExecuteRequest", mockClient, mock.MatchedBy(func(r *http.Request) bool {
 		return assert.Equal(t, "http://api.test/data", r.URL.String()) &&
 			assert.Equal(t, "GET", r.Method)
@@ -349,8 +350,8 @@ func TestRunner_Run_SimpleRequestStep_NoRegression(t *testing.T) {
 func TestRunner_Run_FileHandlingSteps(t *testing.T) {
 	tmpDir := t.TempDir(); rawUploadFilePath := filepath.Join(tmpDir, "upload.bin"); multipartFilePath := filepath.Join(tmpDir, "data.txt"); downloadFilePath := filepath.Join(tmpDir, "downloaded_response.zip"); templateDownloadPath := filepath.Join(tmpDir, "download_{{.STEP_ID}}.out"); expectedRenderedDownloadPath := filepath.Join(tmpDir, "download_step1.out"); envVarDownloadPathTmpl := filepath.Join(tmpDir, "%DL_SUBDIR%/file.out"); t.Setenv("DL_SUBDIR", "results"); expectedEnvVarDownloadPath := filepath.Join(tmpDir, "results/file.out")
 	// Use slightly different content to ensure correct source is verified
-	rawUploadContent := "RAW BINARY UPLOAD DATA"; multipartFileContent := "Multipart file text content."; responseData := "DOWNLOAD RESPONSE DATA TO SAVE"; responseBytes := []byte(responseData)
-	baseCfg := &config.Config{APIs: createTestAPIConfig("http://file.test", "/upload"), Retry: config.RetryConfig{MaxAttempts: 1}, Auth: config.AuthConfig{Default: "none"}, FipsMode: false, Chain: &config.ChainConfig{Variables: map[string]string{"STEP_ID": "step1"}}}
+	rawUploadContent := "RAW BINARY UPLOAD DATA"; multipartFileContent := "Multipart file text content."; responseData := "DOWNLOAD RESPONSE DATA TO SAVE"; responseBytes := []byte(responseData); t.Setenv("STEP_ID", "step1") // Ensure env var set for template
+	baseCfg := &config.Config{APIs: createTestAPIConfig("http://file.test/", "upload"), Retry: config.RetryConfig{MaxAttempts: 1}, Auth: config.AuthConfig{Default: "none"}, FipsMode: false, Chain: &config.ChainConfig{Variables: map[string]string{"STEP_ID": "step1"}}}
 
 	testCases := []struct { name string; step config.ChainStep; setupMocks func(t *testing.T, mockHTTP *mockHTTPClientProvider, mockExec *mockRequestExecutor, mockReader *mockFileReader, mockWriter *mockFileWriter, mockJQ *mockJQRunner, cfg *config.Config); verify func(t *testing.T, runner *Runner, mockExec *mockRequestExecutor, mockWriter *mockFileWriter, err error); expectedErrMsg string }{
 		{
@@ -542,6 +543,9 @@ func TestRunner_Run_FileHandlingSteps(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			currentCfg := *baseCfg; currentCfg.Chain = &config.ChainConfig{Variables: make(map[string]string), Steps: []config.ChainStep{tc.step}}; for k, v := range baseCfg.Chain.Variables { currentCfg.Chain.Variables[k] = v }
 			runner, mockHTTP, mockExec, mockJQ, mockWriter, mockReader := setupTestRunner(t, &currentCfg)
+			// Reset captured requests for each run
+			mockExec.CapturedReqs = nil
+			mockExec.CapturedBodies = nil
 			cfg := runner.cfg // Get reference to config used by runner for mocks
 			if tc.setupMocks != nil { tc.setupMocks(t, mockHTTP, mockExec, mockReader, mockWriter, mockJQ, cfg) } // Pass cfg
 			err := runner.Run(context.Background())
@@ -554,6 +558,59 @@ func TestRunner_Run_FileHandlingSteps(t *testing.T) {
 	}
 }
 
+func TestRunner_Run_InitialPaginationParams(t *testing.T) {
+	// Config with ForceInitialPaginationParams set
+	cfg := &config.Config{
+		APIs: map[string]config.APIConfig{
+			"testapi": {
+				BaseURL: "http://api.test/",
+				AuthType: "none",
+				Endpoints: map[string]config.EndpointConfig{
+					"getep": {
+						Path:   "data",
+						Method: "GET",
+						Pagination: &config.PaginationConfig{
+							Type:                         "offset",
+							Limit:                        10,
+							OffsetParam:                  "start",
+							LimitParam:                   "count",
+							ForceInitialPaginationParams: true, // <-- Key setting
+						},
+					},
+				},
+			},
+		},
+		Chain: &config.ChainConfig{
+			Steps: []config.ChainStep{
+				{Name: "fetch_forced", Request: &config.ChainRequest{API: "testapi", Endpoint: "getep"}},
+			},
+		},
+		Retry: config.RetryConfig{MaxAttempts: 1},
+		Auth:  config.AuthConfig{Default: "none"},
+	}
+	runner, mockHTTP, mockExec, mockJQ, _, _ := setupTestRunner(t, cfg)
+	mockClient := &http.Client{}
+	// Corrected argument count for createMockHttpResponse
+	mockResp := createMockHttpResponse(200, nil, `{"items": []}`) // Passing nil for headers
+	mockHTTP.On("NewClient", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockClient, nil)
+	mockExec.On("ExecuteRequest", mockClient, mock.Anything, "none", mock.Anything, cfg.Retry, mock.Anything).Return(mockResp, []byte(`{"items": []}`), nil).Once()
+	mockExec.On("HandlePagination", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("[]", nil).Once() // Expect pagination handler
+
+	err := runner.Run(context.Background())
+
+	require.NoError(t, err)
+	mockHTTP.AssertExpectations(t)
+	mockExec.AssertExpectations(t)
+	mockJQ.AssertExpectations(t)
+
+	// Verify the *first* request sent to ExecuteRequest had the params
+	require.Len(t, mockExec.CapturedReqs, 1, "Expected exactly one request captured")
+	capturedURL := mockExec.CapturedReqs[0].URL
+	assert.Equal(t, "http://api.test/data", capturedURL.Scheme+"://"+capturedURL.Host+capturedURL.Path)
+	query := capturedURL.Query()
+	assert.Equal(t, "0", query.Get("start"), "Initial offset param 'start' should be '0'")
+	assert.Equal(t, "10", query.Get("count"), "Initial limit param 'count' should be '10'")
+}
 // --- Helper for testing read failures ---
 // errorReader simulates an io.ReadCloser that returns an error during Read.
 type errorReader struct {

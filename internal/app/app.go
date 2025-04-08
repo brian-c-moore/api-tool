@@ -10,13 +10,14 @@ import (
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"strings"
 
 	"api-tool/internal/auth"
-	"api-tool/internal/chain"
+	"api-tool/internal/chain" // Depends on chain interface
 	"api-tool/internal/config"
-	"api-tool/internal/executor"
+	"api-tool/internal/executor" // Depends on executor interface/helpers
 	"api-tool/internal/httpclient"
 	"api-tool/internal/logging"
 	"api-tool/internal/util"
@@ -54,6 +55,13 @@ type chainRunnerFactory interface {
 	New(cfg *config.Config, logLevel int) chainRunner
 }
 
+// requestExecutor defines the interface for executing HTTP requests and handling pagination in single request mode.
+// Necessary to allow mocking the execution/pagination part of runSingleRequest.
+type requestExecutor interface {
+	ExecuteRequest(*http.Client, *http.Request, string, map[string]string, config.RetryConfig, int) (*http.Response, []byte, error)
+	HandlePagination(*http.Client, *http.Request, config.EndpointConfig, *http.Response, []byte, string, map[string]string, config.RetryConfig, int) (string, error)
+}
+
 // --- Default Implementations ---
 
 type defaultConfigLoader struct{}
@@ -70,19 +78,30 @@ func (f *defaultChainRunnerFactory) New(cfg *config.Config, logLevel int) chainR
 	return chain.NewRunner(cfg, logLevel) // Returns *chain.Runner
 }
 
+// defaultRequestExecutor provides the default implementation using the executor package.
+type defaultRequestExecutor struct{}
+
+func (e *defaultRequestExecutor) ExecuteRequest(client *http.Client, req *http.Request, effAuth string, creds map[string]string, retry config.RetryConfig, lvl int) (*http.Response, []byte, error) {
+	return executor.ExecuteRequest(client, req, effAuth, creds, retry, lvl)
+}
+func (e *defaultRequestExecutor) HandlePagination(client *http.Client, req *http.Request, epCfg config.EndpointConfig, resp *http.Response, body []byte, effAuth string, creds map[string]string, retry config.RetryConfig, lvl int) (string, error) {
+	return executor.HandlePagination(client, req, epCfg, resp, body, effAuth, creds, retry, lvl)
+}
+
 // --- AppRunner ---
 
 // AppRunner encapsulates the application's execution logic and dependencies.
 type AppRunner struct {
 	configLoader       configLoader
 	chainRunnerFactory chainRunnerFactory
-	// Add other dependencies here if runSingleRequest is refactored later
+	requestExecutor    requestExecutor // Added request executor for single mode
 }
 
 // AppRunnerOpts allows configuring the AppRunner's dependencies.
 type AppRunnerOpts struct {
 	ConfigLoader       configLoader
 	ChainRunnerFactory chainRunnerFactory
+	RequestExecutor    requestExecutor // Added request executor option
 }
 
 // NewAppRunner creates a new instance of the application runner with default dependencies.
@@ -101,9 +120,15 @@ func NewAppRunnerWithOpts(opts AppRunnerOpts) *AppRunner {
 	if chainFactory == nil {
 		chainFactory = &defaultChainRunnerFactory{}
 	}
+	// Use provided request executor or default
+	reqExec := opts.RequestExecutor
+	if reqExec == nil {
+		reqExec = &defaultRequestExecutor{}
+	}
 	return &AppRunner{
 		configLoader:       loader,
 		chainRunnerFactory: chainFactory,
+		requestExecutor:    reqExec, // Set the request executor
 	}
 }
 
@@ -224,7 +249,7 @@ func (a *AppRunner) Run(args []string) error {
 		Data:    *data,
 	}
 
-	// <<< Pass cfg.FipsMode to runSingleRequest >>>
+	// Pass the full config and the determined log level
 	return a.runSingleRequest(ctx, cfg, *apiName, *endpoint, overrides, logLevel)
 }
 
@@ -263,7 +288,7 @@ func (a *AppRunner) runChainMode(ctx context.Context, runner chainRunner) error 
 }
 
 // runSingleRequest handles the logic for executing a single API call.
-// <<< MODIFIED Signature: Takes cfg *config.Config instead of just fipsMode bool >>>
+// Uses the injected requestExecutor.
 func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, apiName, endpointName string, overrides RequestOverrides, logLevel int) error {
 	// --- Find API and Endpoint Configuration ---
 	apiConf, ok := cfg.APIs[apiName]
@@ -284,15 +309,27 @@ func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, ap
 		httpMethod = "GET" // Default method if not specified anywhere
 	}
 
-	// FIX: Ensure effectiveAuthType determination is robust
 	effectiveAuthType := strings.ToLower(apiConf.AuthType)
-	if effectiveAuthType == "" && cfg.Auth.Default != "" { // Check global default only if API one is empty
+	if effectiveAuthType == "" && cfg.Auth.Default != "" {
 		effectiveAuthType = strings.ToLower(cfg.Auth.Default)
 	}
-	// If still empty, auth.ApplyAuthHeaders will handle it (treat as "none" or error if required)
 
 	// --- Prepare Request Data ---
-	fullURL := util.ExpandEnvUniversal(apiConf.BaseURL) + util.ExpandEnvUniversal(endpointConf.Path)
+	// Robust URL joining using url.ResolveReference
+	baseURLStr := util.ExpandEnvUniversal(apiConf.BaseURL)
+	pathStr := util.ExpandEnvUniversal(endpointConf.Path)
+	baseURL, err := url.Parse(baseURLStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse base URL '%s': %w", baseURLStr, err)
+	}
+	pathURL, err := url.Parse(pathStr) // Allows path to potentially be absolute
+	if err != nil {
+		return fmt.Errorf("failed to parse endpoint path '%s': %w", pathStr, err)
+	}
+	// ResolveReference handles joining correctly, including absolute paths in 'pathStr'
+	// and ensuring no double slashes.
+	resolvedURL := baseURL.ResolveReference(pathURL).String()
+
 	payloadStr := util.ExpandEnvUniversal(overrides.Data) // Use data from overrides
 	payload := []byte(payloadStr)
 
@@ -302,7 +339,7 @@ func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, ap
 		bodyReader = bytes.NewReader(payload)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, httpMethod, fullURL, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, httpMethod, resolvedURL, bodyReader)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -329,15 +366,31 @@ func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, ap
 
 	// --- Authentication ---
 	apiToken := auth.GetAPIToken()
-	// Pass credentials correctly
 	var creds map[string]string
 	if cfg.Auth.Credentials != nil {
 		creds = cfg.Auth.Credentials
 	} else {
-		creds = make(map[string]string) // Pass empty map if nil
+		creds = make(map[string]string)
 	}
 	if err := auth.ApplyAuthHeaders(req, effectiveAuthType, creds, apiToken); err != nil {
 		return fmt.Errorf("failed to apply auth headers: %w", err)
+	}
+
+	// --- Apply Initial Pagination Params if Forced ---
+	paginationConfigured := endpointConf.Pagination != nil && (endpointConf.Pagination.Type == "offset" || endpointConf.Pagination.Type == "page")
+	if paginationConfigured && endpointConf.Pagination.ForceInitialPaginationParams {
+		pagCfgCopy := *endpointConf.Pagination
+		executor.ApplyPaginationDefaults(&pagCfgCopy, strings.ToLower(pagCfgCopy.Type)) // Ensure defaults applied
+
+		if pagCfgCopy.Type == "offset" || pagCfgCopy.Type == "page" {
+			logging.Logf(logging.Info, "Forcing initial pagination parameters for %s %s", req.Method, req.URL.String())
+			err := executor.ModifyRequestForInitialPage(&pagCfgCopy, req) // Pass config pointer
+			if err != nil {
+				return fmt.Errorf("failed to apply initial pagination parameters: %w", err)
+			}
+			logging.Logf(logging.Debug, "Request modified for initial pagination params. New URL: %s", req.URL.String())
+			// Body logging might be too verbose here, but could be added
+		}
 	}
 
 	// --- Create HTTP Client ---
@@ -349,7 +402,7 @@ func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, ap
 		}
 		logging.Logf(logging.Info, "Cookie jar enabled for API '%s'", apiName)
 	}
-	// <<< MODIFIED: Pass cfg.FipsMode to NewClient >>>
+	// Pass cfg.FipsMode to NewClient
 	client, err := httpclient.NewClient(&apiConf, &cfg.Auth, jar, cfg.FipsMode)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP client: %w", err)
@@ -364,8 +417,8 @@ func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, ap
 		logging.Logf(logging.Debug, "Request Payload Snippet: %s", util.Snippet(payload))
 	}
 
-	// Pass credentials correctly
-	resp, bodyBytes, err := executor.ExecuteRequest(client, req, effectiveAuthType, creds, cfg.Retry, logLevel)
+	// Use the injected requestExecutor
+	resp, bodyBytes, err := a.requestExecutor.ExecuteRequest(client, req, effectiveAuthType, creds, cfg.Retry, logLevel)
 	if err != nil {
 		logging.Logf(logging.Error, "Request execution failed: %v", err)
 		return fmt.Errorf("request execution failed: %w", err)
@@ -387,13 +440,13 @@ func (a *AppRunner) runSingleRequest(ctx context.Context, cfg *config.Config, ap
 	// --- Handle Pagination ---
 	var finalBody string
 	var pagErr error
-	paginationConfigured := endpointConf.Pagination != nil && endpointConf.Pagination.Type != "" && endpointConf.Pagination.Type != "none"
+	paginationConfigured = endpointConf.Pagination != nil && endpointConf.Pagination.Type != "" && endpointConf.Pagination.Type != "none" // Re-check type isn't none
 
 	if paginationConfigured {
 		paginationType := strings.ToLower(endpointConf.Pagination.Type)
 		logging.Logf(logging.Info, "Handling '%s' pagination...", paginationType)
-		// Pass credentials correctly
-		paginatedBody, errP := executor.HandlePagination(client, req, endpointConf, resp, bodyBytes, effectiveAuthType, creds, cfg.Retry, logLevel)
+		// Use the injected requestExecutor for pagination as well
+		paginatedBody, errP := a.requestExecutor.HandlePagination(client, req, endpointConf, resp, bodyBytes, effectiveAuthType, creds, cfg.Retry, logLevel)
 		if errP != nil {
 			finalBody = paginatedBody
 			pagErr = errP
