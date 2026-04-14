@@ -1,3 +1,5 @@
+This project has been deprecated and the work folded into new project, Orkestratum. This repo will be updated with the URL once Orkestratum is published.
+
 # api-tool
 
 A flexible command-line tool for automating REST API interactions.
